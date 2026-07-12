@@ -1,0 +1,67 @@
+name: warmibot
+description: WarmiBot - Asistente Virtual con identidad amazónica. Flutter 3.44+
+publish_to: none
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.2.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # ── Estado ───────────────────────────────────────────────────────────────────
+  flutter_bloc: ^9.1.1
+  bloc: ^9.2.1
+  equatable: ^2.0.5
+
+  # ── Voz STT / TTS ────────────────────────────────────────────────────────────
+  speech_to_text: ^7.0.0
+  flutter_tts: ^4.0.2
+
+  # ── Notificaciones / Alarmas ─────────────────────────────────────────────────
+  flutter_local_notifications: ^22.0.1
+  timezone: ^0.11.0
+
+  # ── HTTP / APIs ───────────────────────────────────────────────────────────────
+  http: ^1.2.1
+  xml: ^7.0.1
+
+  # ── Base de datos local (Recordatorios) ──────────────────────────────────────
+  sqflite: ^2.3.3+1
+  path: ^1.9.0
+
+  # ── Permisos ──────────────────────────────────────────────────────────────────
+  permission_handler: ^12.0.3
+
+  # ── Utilidades ───────────────────────────────────────────────────────────────
+  intl: ^0.20.2
+  shared_preferences: ^2.2.3
+  flutter_dotenv: ^6.0.1
+  url_launcher: ^6.3.0
+  share_plus: ^13.1.0
+  string_similarity: ^2.0.0
+
+  # ── UI / Animaciones ─────────────────────────────────────────────────────────
+  lottie: ^3.1.2
+  animated_text_kit: ^4.2.2
+  google_fonts: ^8.1.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/images/
+    - assets/animations/
+    - .env
+
+  # Fuentes opcionales (agregar archivos .ttf manualmente)
+  # fonts:
+  #   - family: WarmiFont
+  #     fonts:
+  #       - asset: assets/fonts/warmi_regular.ttf
