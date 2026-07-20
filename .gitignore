@@ -1,0 +1,33 @@
+# Entorno
+.env
+*.env
+
+# Flutter / Dart
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+build/
+*.g.dart
+*.freezed.dart
+
+# Android
+android/.gradle/
+android/local.properties
+android/captures/
+android/key.properties
+*.jks
+*.keystore
+
+# iOS
+ios/Pods/
+ios/.symlinks/
+ios/Flutter/App.framework
+ios/Flutter/Flutter.framework
+ios/Flutter/Generated.xcconfig
+ios/Flutter/flutter_export_environment.sh
+
+# IDE
+.idea/
+*.iml
+.vscode/settings.json
