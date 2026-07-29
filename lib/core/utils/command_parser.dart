@@ -17,11 +17,28 @@ class CommandParser {
 
     // Quitar tildes
     const Map<String, String> accentMap = {
-      'á': 'a', 'é': 'e', 'í': 'i', 'ó': 'o', 'ú': 'u',
-      'à': 'a', 'è': 'e', 'ì': 'i', 'ò': 'o', 'ù': 'u',
-      'ä': 'a', 'ë': 'e', 'ï': 'i', 'ö': 'o', 'ü': 'u',
-      'â': 'a', 'ê': 'e', 'î': 'i', 'ô': 'o', 'û': 'u',
-      'ñ': 'n', 'ç': 'c',
+      'á': 'a',
+      'é': 'e',
+      'í': 'i',
+      'ó': 'o',
+      'ú': 'u',
+      'à': 'a',
+      'è': 'e',
+      'ì': 'i',
+      'ò': 'o',
+      'ù': 'u',
+      'ä': 'a',
+      'ë': 'e',
+      'ï': 'i',
+      'ö': 'o',
+      'ü': 'u',
+      'â': 'a',
+      'ê': 'e',
+      'î': 'i',
+      'ô': 'o',
+      'û': 'u',
+      'ñ': 'n',
+      'ç': 'c',
     };
     accentMap.forEach((k, v) => result = result.replaceAll(k, v));
 
@@ -41,7 +58,7 @@ class CommandParser {
 
     // 1. Eliminar el nombre del asistente al inicio
     final cleanText = text.replaceFirst(
-      RegExp(r'^(warmibot|warmi)\s*', caseSensitive: false), '');
+        RegExp(r'^(warmibot|warmi)\s*', caseSensitive: false), '');
 
     // 2. Búsqueda exacta por subcadena (más rápida)
     for (final entry in Commands.variants.entries) {
@@ -78,12 +95,39 @@ class CommandParser {
     return matches.map((m) => int.parse(m.group(0)!)).toList();
   }
 
-  /// Extrae ciudad: busca "en <ciudad>" al final del texto
+  /// Extrae ciudad: busca `en ciudad` al final del texto.
   static String extractCity(String text, {String fallback = 'Tena'}) {
-    final match = RegExp(r'\ben\s+(\w+(?:\s+\w+)?)\s*$').firstMatch(text);
-    if (match != null) return match.group(1)!.trim();
-    final words = text.split(' ');
-    return words.isNotEmpty ? words.last : fallback;
+    final normalized = normalize(text);
+    if (normalized.isEmpty) return fallback;
+
+    final patterns = [
+      RegExp(
+        r'\b(?:clima|tiempo|temperatura)\b.*?'
+        r'\b(?:en|de|para)\s+(.+)$',
+      ),
+      RegExp(r'\b(?:clima|tiempo|temperatura)\s+(.+)$'),
+    ];
+    RegExpMatch? match;
+    for (final pattern in patterns) {
+      match = pattern.firstMatch(normalized);
+      if (match != null) break;
+    }
+    if (match == null) return fallback;
+
+    final city = match
+        .group(1)!
+        .replaceAll(RegExp(r'\b(?:hoy|ahora|por favor)\b'), '')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+
+    const ignoredValues = {
+      '',
+      'clima',
+      'tiempo',
+      'temperatura',
+      'actual',
+    };
+    return ignoredValues.contains(city) ? fallback : city;
   }
 
   /// Extrae idioma destino del texto de traducción
@@ -103,7 +147,10 @@ class CommandParser {
       phrase = phrase.replaceAll(p, '');
     }
     for (final lang in AppConstants.languages.keys) {
-      phrase = phrase.replaceAll('al $lang', '').replaceAll('en $lang', '').replaceAll(lang, '');
+      phrase = phrase
+          .replaceAll('al $lang', '')
+          .replaceAll('en $lang', '')
+          .replaceAll(lang, '');
     }
     return phrase.trim();
   }
@@ -131,21 +178,23 @@ class CommandParser {
     if (yearMatch == null) return null;
     final year = int.parse(yearMatch.group(1)!);
 
-    try {
-      return DateTime(year, month, day);
-    } catch (_) {
-      return null;
-    }
+    final date = DateTime(year, month, day);
+    return date.year == year && date.month == month && date.day == day
+        ? date
+        : null;
   }
 
   /// Extrae expresión matemática y la evalúa de forma segura
   /// Equivalente al ast.parse + eval de Python
   static double? evalMath(String text) {
     String expr = text
-        .replaceAll('mas', '+').replaceAll('más', '+')
+        .replaceAll('mas', '+')
+        .replaceAll('más', '+')
         .replaceAll('menos', '-')
-        .replaceAll('por', '*').replaceAll('x', '*')
-        .replaceAll('entre', '/').replaceAll('dividido', '/')
+        .replaceAll('por', '*')
+        .replaceAll('x', '*')
+        .replaceAll('entre', '/')
+        .replaceAll('dividido', '/')
         .replaceAll(RegExp(r'[^\d\+\-\*\/\.\(\)\s]'), '')
         .trim();
     if (expr.isEmpty) return null;
@@ -159,7 +208,12 @@ class CommandParser {
   // Mini evaluador de expresiones aritméticas (sin dependencias externas)
   static double _evalExpr(String expr) {
     expr = expr.replaceAll(' ', '');
-    return _parseAddSub(expr, _Pos(0));
+    final pos = _Pos(0);
+    final result = _parseAddSub(expr, pos);
+    if (pos.i != expr.length || !result.isFinite) {
+      throw const FormatException('Expresión matemática inválida');
+    }
+    return result;
   }
 
   static double _parseAddSub(String expr, _Pos pos) {
@@ -198,13 +252,18 @@ class CommandParser {
     if (pos.i < expr.length && expr[pos.i] == '(') {
       pos.i++; // '('
       final result = _parseAddSub(expr, pos);
+      if (pos.i >= expr.length || expr[pos.i] != ')') {
+        throw const FormatException('Falta cerrar un paréntesis');
+      }
       pos.i++; // ')'
       return result;
     }
     final start = pos.i;
-    while (pos.i < expr.length &&
-        (expr[pos.i].contains(RegExp(r'[\d\.]')))) {
+    while (pos.i < expr.length && (expr[pos.i].contains(RegExp(r'[\d\.]')))) {
       pos.i++;
+    }
+    if (start == pos.i) {
+      throw const FormatException('Se esperaba un número');
     }
     return double.parse(expr.substring(start, pos.i));
   }
