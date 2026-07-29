@@ -97,10 +97,37 @@ class CommandParser {
 
   /// Extrae ciudad: busca `en ciudad` al final del texto.
   static String extractCity(String text, {String fallback = 'Tena'}) {
-    final match = RegExp(r'\ben\s+(\w+(?:\s+\w+)?)\s*$').firstMatch(text);
-    if (match != null) return match.group(1)!.trim();
-    final words = text.split(' ');
-    return words.isNotEmpty ? words.last : fallback;
+    final normalized = normalize(text);
+    if (normalized.isEmpty) return fallback;
+
+    final patterns = [
+      RegExp(
+        r'\b(?:clima|tiempo|temperatura)\b.*?'
+        r'\b(?:en|de|para)\s+(.+)$',
+      ),
+      RegExp(r'\b(?:clima|tiempo|temperatura)\s+(.+)$'),
+    ];
+    RegExpMatch? match;
+    for (final pattern in patterns) {
+      match = pattern.firstMatch(normalized);
+      if (match != null) break;
+    }
+    if (match == null) return fallback;
+
+    final city = match
+        .group(1)!
+        .replaceAll(RegExp(r'\b(?:hoy|ahora|por favor)\b'), '')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+
+    const ignoredValues = {
+      '',
+      'clima',
+      'tiempo',
+      'temperatura',
+      'actual',
+    };
+    return ignoredValues.contains(city) ? fallback : city;
   }
 
   /// Extrae idioma destino del texto de traducción

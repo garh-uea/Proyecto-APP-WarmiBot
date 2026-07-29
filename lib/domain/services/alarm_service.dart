@@ -135,6 +135,7 @@ class AlarmService {
     if (scheduledDate.isBefore(now)) {
       scheduledDate = scheduledDate.add(const Duration(days: 1));
     }
+    final scheduleMode = await _androidScheduleMode();
 
     await _plugin.zonedSchedule(
       id: id,
@@ -142,7 +143,7 @@ class AlarmService {
       body: body,
       scheduledDate: scheduledDate,
       notificationDetails: _details,
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      androidScheduleMode: scheduleMode,
     );
   }
 
@@ -164,6 +165,7 @@ class AlarmService {
     final scheduledDate = tz.TZDateTime.now(tz.local).add(
       Duration(seconds: seconds),
     );
+    final scheduleMode = await _androidScheduleMode();
 
     await _plugin.zonedSchedule(
       id: id,
@@ -171,7 +173,7 @@ class AlarmService {
       body: body,
       scheduledDate: scheduledDate,
       notificationDetails: _details,
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      androidScheduleMode: scheduleMode,
     );
   }
 
@@ -196,6 +198,7 @@ class AlarmService {
     )) {
       return;
     }
+    final scheduleMode = await _androidScheduleMode();
 
     await _plugin.zonedSchedule(
       id: reminder.id!,
@@ -203,7 +206,7 @@ class AlarmService {
       body: reminder.text,
       scheduledDate: scheduledDate,
       notificationDetails: _details,
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      androidScheduleMode: scheduleMode,
     );
   }
 
@@ -240,5 +243,27 @@ class AlarmService {
   Future<void> cancelAll() async {
     await init();
     await _plugin.cancelAll();
+  }
+
+  Future<AndroidScheduleMode> _androidScheduleMode() async {
+    final android = _plugin.resolvePlatformSpecificImplementation<
+        AndroidFlutterLocalNotificationsPlugin>();
+    if (android == null) return AndroidScheduleMode.exactAllowWhileIdle;
+
+    final notificationsAllowed = await android.requestNotificationsPermission();
+    if (notificationsAllowed == false) {
+      throw Exception(
+        'WarmiBot necesita permiso de notificaciones para crear alarmas.',
+      );
+    }
+
+    var exactAllowed = await android.canScheduleExactNotifications();
+    if (exactAllowed == false) {
+      await android.requestExactAlarmsPermission();
+      exactAllowed = await android.canScheduleExactNotifications();
+    }
+    return exactAllowed == false
+        ? AndroidScheduleMode.inexactAllowWhileIdle
+        : AndroidScheduleMode.exactAllowWhileIdle;
   }
 }

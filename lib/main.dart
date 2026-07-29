@@ -28,7 +28,13 @@ Future<void> main() async {
     statusBarIconBrightness: Brightness.light,
   ));
 
-  await dotenv.load(fileName: '.env');
+  try {
+    await dotenv.load(fileName: '.env');
+  } catch (error) {
+    debugPrint(
+      'WarmiBot inició sin .env; se usarán servicios y valores de respaldo.',
+    );
+  }
   await initializeDateFormatting('es', null);
 
   runApp(const WarmiBotApp());

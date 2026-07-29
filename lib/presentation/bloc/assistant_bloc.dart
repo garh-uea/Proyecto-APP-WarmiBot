@@ -60,6 +60,8 @@ class AssistantBloc extends Bloc<AssistantEvent, AssistantState> {
     on<StartListening>(_onStartListening);
     on<StopListening>(_onStopListening);
     on<SpeechReceived>(_onSpeechReceived);
+    on<SpeechRecognitionFailed>(_onSpeechRecognitionFailed);
+    on<SpeechListeningEnded>(_onSpeechListeningEnded);
     on<ClearChat>(_onClearChat);
   }
 
@@ -67,26 +69,50 @@ class AssistantBloc extends Bloc<AssistantEvent, AssistantState> {
 
   Future<void> _onInit(
       InitAssistant event, Emitter<AssistantState> emit) async {
-    await _tts.init();
-    await _stt.init();
-    await _alarm.init();
+    final unavailable = <String>[];
+    try {
+      await _tts.init();
+    } catch (_) {
+      unavailable.add('lectura en voz alta');
+    }
+    try {
+      if (!await _stt.init()) unavailable.add('reconocimiento de voz');
+    } catch (_) {
+      unavailable.add('reconocimiento de voz');
+    }
+    try {
+      await _alarm.init();
+    } catch (_) {
+      unavailable.add('alarmas');
+    }
 
-    const welcome = '¡Hola! Soy WarmiBot, tu asistente inteligente. '
+    var welcome = '¡Hola! Soy WarmiBot, tu asistente inteligente. '
         'Puedes escribirme o tocar el micrófono para hablarme. ¿En qué te ayudo?';
+    if (unavailable.isNotEmpty) {
+      welcome += '\n\nAlgunas funciones necesitan revisión en este '
+          'dispositivo: ${unavailable.join(', ')}. El chat por teclado sigue disponible.';
+    }
 
     emit(state.copyWith(
       messages: [ChatMessage.bot(welcome)],
       avatarState: AvatarState.idle,
     ));
-    await _tts.speak(welcome);
+    try {
+      await _tts.speak(welcome);
+    } catch (_) {
+      // La interfaz debe seguir funcionando aunque TTS no esté disponible.
+    }
   }
 
   // ── Texto enviado ─────────────────────────────────────────────────────────
 
   Future<void> _onProcessText(
       ProcessTextCommand event, Emitter<AssistantState> emit) async {
+    final text = event.text.trim();
+    if (text.isEmpty) return;
+
     final previousMessages = state.messages;
-    final userMsg = ChatMessage.user(event.text);
+    final userMsg = ChatMessage.user(text);
     final loading = ChatMessage.loading();
 
     emit(state.copyWith(
@@ -95,7 +121,7 @@ class AssistantBloc extends Bloc<AssistantEvent, AssistantState> {
       isProcessing: true,
     ));
 
-    final response = await _resolveCommand(event.text);
+    final response = await _resolveCommand(text);
 
     final msgs = [...previousMessages, userMsg, ChatMessage.bot(response)];
     emit(state.copyWith(
@@ -103,7 +129,11 @@ class AssistantBloc extends Bloc<AssistantEvent, AssistantState> {
       avatarState: AvatarState.speaking,
       isProcessing: false,
     ));
-    await _tts.speak(response);
+    try {
+      await _tts.speak(response);
+    } catch (_) {
+      // La respuesta escrita sigue siendo válida si el motor TTS falla.
+    }
     emit(state.copyWith(avatarState: AvatarState.idle));
   }
 
@@ -111,10 +141,16 @@ class AssistantBloc extends Bloc<AssistantEvent, AssistantState> {
 
   Future<void> _onStartListening(
       StartListening event, Emitter<AssistantState> emit) async {
+    try {
+      await _tts.stop();
+    } catch (_) {
+      // El micrófono puede continuar aunque TTS no estuviera disponible.
+    }
     emit(state.copyWith(avatarState: AvatarState.listening, soundLevel: 0.0));
     await _stt.listen(
       onResult: (text) => add(SpeechReceived(text)),
-      onListeningEnd: () => add(const StopListening()),
+      onListeningEnd: () => add(const SpeechListeningEnded()),
+      onError: (message) => add(SpeechRecognitionFailed(message)),
     );
   }
 
@@ -127,6 +163,26 @@ class AssistantBloc extends Bloc<AssistantEvent, AssistantState> {
   Future<void> _onSpeechReceived(
       SpeechReceived event, Emitter<AssistantState> emit) async {
     add(ProcessTextCommand(event.text));
+  }
+
+  Future<void> _onSpeechRecognitionFailed(
+      SpeechRecognitionFailed event, Emitter<AssistantState> emit) async {
+    emit(state.copyWith(
+      messages: [
+        ...state.messages,
+        ChatMessage.bot(event.message, type: MessageType.error),
+      ],
+      avatarState: AvatarState.error,
+      isProcessing: false,
+      errorMessage: event.message,
+    ));
+  }
+
+  Future<void> _onSpeechListeningEnded(
+      SpeechListeningEnded event, Emitter<AssistantState> emit) async {
+    if (state.avatarState == AvatarState.listening) {
+      emit(state.copyWith(avatarState: AvatarState.idle, soundLevel: 0.0));
+    }
   }
 
   Future<void> _onClearChat(
