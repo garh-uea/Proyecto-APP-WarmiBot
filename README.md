@@ -26,7 +26,7 @@ warmibot/
 │   │   └── services/
 │   │       ├── tts_service.dart      ← Text-to-Speech (flutter_tts)
 │   │       ├── stt_service.dart      ← Speech-to-Text (speech_to_text)
-│   │       ├── weather_service.dart  ← Clima (OpenWeatherMap)
+│   │       ├── weather_service.dart  ← Clima (OpenWeatherMap + Open-Meteo)
 │   │       ├── search_service.dart   ← Wikipedia + DuckDuckGo
 │   │       ├── translation_service.dart ← Google Translate HTTP
 │   │       ├── alarm_service.dart    ← Alarmas + notificaciones push
@@ -72,12 +72,14 @@ warmibot/
 # (reemplazar el contenido existente)
 ```
 
-### 2. Configurar API Key
-Abrir `.env` y pegar tu API key de OpenWeatherMap:
+### 2. Configurar API Key (opcional)
+La consulta del clima funciona con Open-Meteo sin clave. Si deseas usar
+OpenWeatherMap como proveedor principal, abre `.env` y agrega:
 ```
 OPENWEATHER_API_KEY=tu_api_key_aqui
 ```
-> Obtener key gratis en: https://openweathermap.org/api
+> Si la clave está ausente o falla, WarmiBot cambia automáticamente a
+> [Open-Meteo](https://open-meteo.com/), cuyos datos se usan como respaldo.
 
 ### 3. Instalar dependencias
 ```bash
@@ -154,15 +156,41 @@ flutter run
 ## 🔑 Dependencias Principales
 
 ```yaml
-flutter_bloc: ^8.1.6       # Gestión de estado
-speech_to_text: ^6.6.2     # Reconocimiento de voz
+flutter_bloc: ^9.1.1       # Gestión de estado
+speech_to_text: ^7.0.0     # Reconocimiento de voz
 flutter_tts: ^4.0.2        # Síntesis de voz
 flutter_local_notifications # Alarmas y push
 sqflite: ^2.3.3+1          # Base de datos local
 http: ^1.2.1               # APIs REST
 lottie: ^3.1.2             # Animaciones avatar
-google_fonts: ^6.2.1       # Tipografía Poppins/Lato
+google_fonts: ^8.1.0       # Tipografía Poppins/Lato
 ```
+
+---
+
+## Backend
+
+El backend FastAPI se encuentra en `backend/` e incluye autenticación JWT,
+roles, conversaciones protegidas, caché, carga anticipada y tareas asíncronas.
+
+```powershell
+cd C:\WarmiBot\backend
+.\.venv\Scripts\python.exe -m pytest -q
+.\.venv\Scripts\uvicorn.exe app.main:app --reload
+```
+
+Swagger queda disponible en `http://127.0.0.1:8000/docs`. Las credenciales,
+claves JWT y bases locales están excluidas de Git.
+
+## Verificación
+
+```powershell
+C:\flutter\bin\flutter.bat analyze --no-pub
+C:\flutter\bin\flutter.bat test
+C:\flutter\bin\flutter.bat build apk --release
+```
+
+El APK se genera en `build/app/outputs/flutter-apk/app-release.apk`.
 
 ---
 
