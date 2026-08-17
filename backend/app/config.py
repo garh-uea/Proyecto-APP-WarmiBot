@@ -10,6 +10,19 @@ def _csv(name: str, default: str) -> tuple[str, ...]:
     return tuple(item.strip() for item in value.split(",") if item.strip())
 
 
+def validate_jwt_secret(app_env: str, jwt_secret: str) -> None:
+    if app_env.lower() != "production":
+        return
+    insecure_values = {
+        "development-only-change-me",
+        "change-this-secret-before-production",
+    }
+    if jwt_secret in insecure_values or len(jwt_secret) < 32:
+        raise ValueError(
+            "JWT_SECRET debe tener al menos 32 caracteres aleatorios en producción"
+        )
+
+
 @dataclass(frozen=True)
 class Settings:
     app_name: str
@@ -31,13 +44,16 @@ class Settings:
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
+    app_env = os.getenv("APP_ENV", "development")
+    jwt_secret = os.getenv("JWT_SECRET", "development-only-change-me")
+    validate_jwt_secret(app_env, jwt_secret)
     return Settings(
         app_name=os.getenv("APP_NAME", "WarmiBot API"),
-        app_env=os.getenv("APP_ENV", "development"),
+        app_env=app_env,
         database_url=os.getenv(
             "DATABASE_URL", "sqlite:///./warmibot_backend.db"
         ),
-        jwt_secret=os.getenv("JWT_SECRET", "development-only-change-me"),
+        jwt_secret=jwt_secret,
         jwt_algorithm="HS256",
         access_token_minutes=int(os.getenv("ACCESS_TOKEN_MINUTES", "15")),
         refresh_token_days=int(os.getenv("REFRESH_TOKEN_DAYS", "7")),
@@ -52,4 +68,3 @@ def get_settings() -> Settings:
 
 
 settings = get_settings()
-

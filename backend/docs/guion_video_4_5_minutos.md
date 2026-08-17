@@ -8,7 +8,7 @@ de pantalla compartida. No mostrar contraseñas reales ni el contenido de `.env`
 ## Material que debe estar preparado
 
 1. Una diapositiva inicial: nombre del proyecto, integrantes y objetivo.
-2. Swagger abierto en `http://127.0.0.1:8000/docs`.
+2. Swagger abierto en `http://127.0.0.1:800/docs`.
 3. Postman con `WarmiBot_Backend.postman_collection.json` importado.
 4. Terminal con `pytest` ejecutado y otra con `python scripts\benchmark.py`.
 5. Editor abierto en estos archivos:

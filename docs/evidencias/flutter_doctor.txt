@@ -1,0 +1,33 @@
+[√] Flutter (Channel stable, 3.44.2, on Microsoft Windows [Versi¢n 10.0.26100.9168], locale es-EC) [2,4s]
+    • Flutter version 3.44.2 on channel stable at C:\flutter
+    • Upstream repository https://github.com/flutter/flutter.git
+    • Framework revision c9a6c48423 (10 weeks ago), 2026-06-10 15:52:41 -0700
+    • Engine revision 77e2e94772
+    • Dart version 3.12.2
+    • DevTools version 2.57.0
+    • Feature flags: enable-web, enable-linux-desktop, enable-macos-desktop, no-enable-windows-desktop, enable-android, enable-ios, cli-animations, enable-native-assets, enable-swift-package-manager, omit-legacy-version-file, enable-lldb-debugging, enable-uiscene-migration
+
+[√] Windows Version (Windows 11 or higher, 24H2, 2009) [14,8s]
+
+[√] Android toolchain - develop for Android devices (Android SDK version 36.1.0) [17,4s]
+    • Android SDK at C:\Android\Sdk
+    • Emulator version 36.6.11.0 (build_id 15507667) (CL:N/A)
+    • Platform android-36.1, build-tools 36.1.0
+    • Java binary at: C:\Program Files\Android\Android Studio\jbr\bin\java
+      This is the JDK bundled with the latest Android Studio installation on this machine.
+      To manually set the JDK path, use: `flutter config --jdk-dir="path/to/jdk"`.
+    • Java version OpenJDK Runtime Environment (build 21.0.10+-14961533-b1163.108)
+    • All Android licenses accepted.
+
+[√] Chrome - develop for the web [67ms]
+    • Chrome at C:\Program Files\Google\Chrome\Application\chrome.exe
+
+[√] Connected device (3 available) [3,2s]
+    • sdk gphone64 x86 64 (mobile) • emulator-5554 • android-x64    • Android 13 (API 33) (emulator)
+    • Chrome (web)                 • chrome        • web-javascript • Google Chrome 151.0.7922.138
+    • Edge (web)                   • edge          • web-javascript • Microsoft Edge 151.0.4129.78
+
+[√] Network resources [1.358ms]
+    • All expected network resources are available.
+
+• No issues found!

@@ -128,11 +128,12 @@ class _ReminderCard extends StatelessWidget {
     final fmt = DateFormat('EEE d MMM · h:mm a', 'es');
     final past = reminder.scheduledAt.isBefore(DateTime.now());
 
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.bgCard,
+    return Material(
+      color: AppColors.bgCard,
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(
+        side: BorderSide(
           color: reminder.isCompleted
               ? AppColors.textMuted.withValues(alpha: 0.2)
               : past
@@ -141,6 +142,9 @@ class _ReminderCard extends StatelessWidget {
         ),
       ),
       child: ListTile(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+        ),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
         leading: Container(
           width: 40,

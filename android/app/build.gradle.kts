@@ -5,7 +5,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.flutter_warmiboot"
+    namespace = "com.uea.warmibot"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 

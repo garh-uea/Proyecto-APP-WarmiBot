@@ -14,6 +14,7 @@ import '../widgets/warmi_avatar.dart';
 import '../widgets/chat_bubble.dart';
 import '../widgets/quick_actions_grid.dart';
 import '../widgets/input_bar.dart';
+import '../widgets/backend_status_indicator.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -215,6 +216,7 @@ class _WarmiAppBar extends StatelessWidget {
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
                         color: AppColors.textMuted),
                 ),
+                const BackendStatusIndicator(),
               ],
             ),
           ),

@@ -31,3 +31,10 @@ ios/Flutter/flutter_export_environment.sh
 .idea/
 *.iml
 .vscode/settings.json
+
+# QA local y archivos temporales de Codex
+docs/qa_exposicion/
+docs/qa_informe/
+docs/evidencias/backend_runtime.log
+docs/evidencias/backend_runtime_error.log
+codex_test.txt

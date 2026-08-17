@@ -1,0 +1,36 @@
+EVIDENCIA DE VERSIONES - WARMI BOT
+Fecha: 2026-08-16 18:31:52 -05:00
+
+Visual Studio Code
+1.132.0
+df53daabb18cd157bdb08c7f01c34df936cf12f4
+x64
+
+Extensiones Flutter/Dart
+
+dart-code.dart-code@3.140.0
+dart-code.flutter@3.140.0
+
+Python backend
+Python 3.14.4
+
+FastAPI y Uvicorn
+FastAPI 0.139.2
+Uvicorn 0.51.0
+
+Java
+openjdk version "21.0.10" 2026-01-20
+OpenJDK Runtime Environment (build 21.0.10+-14961533-b1163.108)
+OpenJDK 64-Bit Server VM (build 21.0.10+-14961533-b1163.108, mixed mode)
+
+ADB
+Android Debug Bridge version 1.0.41
+Version 37.0.0-14910828
+Installed as C:\Android\Sdk\platform-tools\adb.exe
+Running on Windows 10.0.26100
+
+Emulador
+Android emulator version 36.6.11.0 (build_id 15507667) (CL:N/A)
+Copyright (C) 2006-2024 The Android Open Source Project and many others.
+This program is a derivative of the QEMU CPU emulator (www.qemu.org).
+
