@@ -97,4 +97,3 @@ class OptimizationComparison(BaseModel):
     before_n_plus_one: StrategyMetric
     after_eager_loading: StrategyMetric
     query_reduction_percent: float
-

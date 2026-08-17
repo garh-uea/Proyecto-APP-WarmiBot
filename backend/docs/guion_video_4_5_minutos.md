@@ -1,7 +1,7 @@
 # Guion grupal exacto para el video de WarmiBot
 
-**Duración objetivo:** 4 minutos 30 segundos.  
-**Integrantes:** 3.  
+**Duración objetivo:** 4 minutos 30 segundos.
+**Integrantes:** 3.
 **Formato recomendado:** grabación horizontal 1080p, voz clara y una sola captura
 de pantalla compartida. No mostrar contraseñas reales ni el contenido de `.env`.
 

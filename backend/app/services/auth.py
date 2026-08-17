@@ -80,4 +80,3 @@ def revoke_refresh_token(db: Session, raw_token: str, user: User) -> None:
     if stored is not None and not stored.revoked:
         stored.revoked = True
         db.commit()
-

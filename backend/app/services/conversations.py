@@ -89,4 +89,3 @@ def compare_loading_strategies(user_id: int) -> OptimizationComparison:
         after_eager_loading=after,
         query_reduction_percent=round(reduction, 2),
     )
-

@@ -81,4 +81,3 @@ def logout(
 @router.get("/me", response_model=UserOut)
 def me(current_user: CurrentUser) -> User:
     return current_user
-

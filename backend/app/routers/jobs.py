@@ -50,4 +50,3 @@ def get_job(job_id: str, current_user: CurrentUser, db: DbSession) -> AsyncJob:
             detail="Tarea no encontrada",
         )
     return job
-

@@ -38,3 +38,6 @@ docs/qa_informe/
 docs/evidencias/backend_runtime.log
 docs/evidencias/backend_runtime_error.log
 codex_test.txt
+backups/
+tools/crop_qa_headings.py
+tools/render_pdf_pages.py

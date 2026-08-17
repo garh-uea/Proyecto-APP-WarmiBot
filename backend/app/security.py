@@ -120,4 +120,3 @@ def decode_token(token: str, expected_type: str) -> dict[str, Any]:
 
 def hash_token(token: str) -> str:
     return hashlib.sha256(token.encode("utf-8")).hexdigest()
-
