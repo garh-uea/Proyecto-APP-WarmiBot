@@ -26,21 +26,23 @@ class NewsService {
   static final NewsService instance = NewsService._();
 
   Future<List<NewsItem>> fetchNews({int maxItems = 5}) async {
-    final url = dotenv.env['NEWS_RSS_URL'] ??
-        'https://feeds.bbci.co.uk/mundo/rss.xml';
+    final url =
+        dotenv.env['NEWS_RSS_URL'] ?? 'https://feeds.bbci.co.uk/mundo/rss.xml';
 
-    final response = await http.get(Uri.parse(url))
-        .timeout(const Duration(seconds: 10));
+    final response =
+        await http.get(Uri.parse(url)).timeout(const Duration(seconds: 10));
 
     if (response.statusCode != 200) {
-      throw Exception('No pude obtener las noticias (error ${response.statusCode})');
+      throw Exception(
+          'No pude obtener las noticias (error ${response.statusCode})');
     }
 
     final document = XmlDocument.parse(response.body);
     final items = document.findAllElements('item').take(maxItems);
 
     return items.map((item) {
-      String description = item.findElements('description').firstOrNull?.innerText ?? '';
+      String description =
+          item.findElements('description').firstOrNull?.innerText ?? '';
       // Limpiar etiquetas HTML residuales
       description = description.replaceAll(RegExp(r'<[^>]*>'), '').trim();
       // Truncar a 120 chars
@@ -49,10 +51,10 @@ class NewsService {
       }
 
       return NewsItem(
-        title:       item.findElements('title').firstOrNull?.innerText ?? '',
+        title: item.findElements('title').firstOrNull?.innerText ?? '',
         description: description,
-        link:        item.findElements('link').firstOrNull?.innerText ?? '',
-        pubDate:     item.findElements('pubDate').firstOrNull?.innerText ?? '',
+        link: item.findElements('link').firstOrNull?.innerText ?? '',
+        pubDate: item.findElements('pubDate').firstOrNull?.innerText ?? '',
       );
     }).toList();
   }

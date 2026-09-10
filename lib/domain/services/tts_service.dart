@@ -22,7 +22,7 @@ class TtsService {
     if (_initialized) return;
 
     final prefs = await SharedPreferences.getInstance();
-    final rate   = prefs.getDouble(AppConstants.prefTtsRate)   ?? 0.5;
+    final rate = prefs.getDouble(AppConstants.prefTtsRate) ?? 0.5;
     final volume = prefs.getDouble(AppConstants.prefTtsVolume) ?? 1.0;
 
     await _tts.setLanguage('es-ES');
@@ -75,7 +75,11 @@ class TtsService {
         .toList();
   }
 
-  void dispose() {
-    _tts.stop();
+  Future<void> dispose() async {
+    try {
+      await _tts.stop();
+    } catch (_) {
+      // El canal nativo puede no existir en pruebas o durante el cierre.
+    }
   }
 }

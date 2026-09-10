@@ -9,7 +9,7 @@ from sqlalchemy import func, select
 from .config import settings
 from .database import Base, SessionLocal, engine
 from .models import User, UserRole
-from .routers import auth, conversations, diagnostics, jobs
+from .routers import auth, conversations, diagnostics, jobs, reminders
 from .security import hash_password
 from .worker import job_queue
 
@@ -69,6 +69,7 @@ app.include_router(auth.router, prefix=api_prefix)
 app.include_router(conversations.router, prefix=api_prefix)
 app.include_router(jobs.router, prefix=api_prefix)
 app.include_router(diagnostics.router, prefix=api_prefix)
+app.include_router(reminders.router, prefix=api_prefix)
 
 
 @app.get("/health", tags=["Sistema"])

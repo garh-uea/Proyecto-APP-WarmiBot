@@ -4,11 +4,16 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import '../../core/theme/app_theme.dart';
 import '../bloc/assistant_bloc.dart';
 import '../bloc/assistant_event.dart';
 import '../bloc/assistant_state.dart';
-import '../widgets/chat_bubble.dart';
+import '../bloc/auth_cubit.dart';
+import '../components/warmi_async_content.dart';
+import '../components/warmi_message_card.dart';
+import '../components/warmi_page_scaffold.dart';
+import '../../domain/models/chat_message.dart';
 
 class ConversationsPage extends StatelessWidget {
   const ConversationsPage({super.key});
@@ -17,27 +22,21 @@ class ConversationsPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocBuilder<AssistantBloc, AssistantState>(
       builder: (context, state) {
-        return Scaffold(
-          backgroundColor: Colors.transparent,
-          appBar: AppBar(
-            title: const Text('Conversaciones'),
-            backgroundColor: Colors.transparent,
-            actions: [
-              if (state.messages.isNotEmpty)
-                IconButton(
-                  icon: const Icon(Icons.delete_outline_rounded),
-                  tooltip: 'Limpiar historial',
-                  onPressed: () => _confirmClear(context),
-                ),
-            ],
-          ),
-          body: state.messages.isEmpty
-              ? _emptyState(context)
-              : ListView.builder(
-                  padding: const EdgeInsets.only(top: 8, bottom: 80),
-                  itemCount: state.messages.length,
-                  itemBuilder: (_, i) => ChatBubble(message: state.messages[i]),
-                ),
+        final contentState = state.messages.isNotEmpty
+            ? WarmiContentState.content
+            : state.errorMessage != null
+                ? WarmiContentState.error
+                : state.isProcessing
+                    ? WarmiContentState.loading
+                    : WarmiContentState.empty;
+
+        return ConversationsView(
+          messages: state.messages,
+          contentState: contentState,
+          errorMessage: state.errorMessage,
+          onRetry: () =>
+              context.read<AssistantBloc>().add(const InitAssistant()),
+          onClear: state.messages.isEmpty ? null : () => _confirmClear(context),
         );
       },
     );
@@ -72,25 +71,54 @@ class ConversationsPage extends StatelessWidget {
       ),
     );
   }
+}
 
-  Widget _emptyState(BuildContext context) => Center(
-        child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-          const Text('💬', style: TextStyle(fontSize: 48)),
-          const SizedBox(height: 16),
-          Text('Sin conversaciones todavía',
-              style: Theme.of(context)
-                  .textTheme
-                  .titleLarge
-                  ?.copyWith(color: AppColors.textSecondary)),
-          const SizedBox(height: 8),
-          Text('Ve a Inicio y comienza a hablar con WarmiBot',
-              style: Theme.of(context)
-                  .textTheme
-                  .bodyMedium
-                  ?.copyWith(color: AppColors.textMuted),
-              textAlign: TextAlign.center),
-        ]),
-      );
+/// Vista pura: recibe datos y callbacks; no conoce BLoC, backend ni rutas.
+class ConversationsView extends StatelessWidget {
+  final List<ChatMessage> messages;
+  final WarmiContentState contentState;
+  final String? errorMessage;
+  final VoidCallback? onRetry;
+  final VoidCallback? onClear;
+
+  const ConversationsView({
+    super.key,
+    required this.messages,
+    required this.contentState,
+    this.errorMessage,
+    this.onRetry,
+    this.onClear,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return WarmiPageScaffold(
+      title: 'Conversaciones',
+      description: 'Historial de mensajes intercambiados con WarmiBot.',
+      actions: [
+        if (onClear != null)
+          IconButton(
+            tooltip: 'Limpiar historial',
+            onPressed: onClear,
+            icon: const Icon(Icons.delete_outline_rounded),
+          ),
+      ],
+      child: WarmiAsyncContent(
+        state: contentState,
+        loadingLabel: 'Cargando conversaciones',
+        emptyTitle: 'Sin conversaciones todavía',
+        emptyMessage: 'Ve a Inicio y comienza a hablar con WarmiBot.',
+        errorTitle: 'No se pudo mostrar el historial',
+        errorMessage: errorMessage ?? 'Ocurrió un problema inesperado.',
+        retryLabel: 'Intentar nuevamente',
+        onRetry: onRetry,
+        contentBuilder: (context) => ListView.builder(
+          itemCount: messages.length,
+          itemBuilder: (_, index) => WarmiMessageCard(message: messages[index]),
+        ),
+      ),
+    );
+  }
 }
 
 // ============================================================
@@ -102,6 +130,11 @@ class ProfilePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final session = context.watch<AuthCubit>().state.session;
+    final user = session?.user;
+    final initial = (user?.displayName.trim().isNotEmpty ?? false)
+        ? user!.displayName.trim()[0].toUpperCase()
+        : 'W';
     return Scaffold(
       backgroundColor: Colors.transparent,
       appBar: AppBar(
@@ -123,20 +156,35 @@ class ProfilePage extends StatelessWidget {
                       const LinearGradient(colors: AppColors.avatarGradient),
                   border: Border.all(color: AppColors.accentGreen, width: 2.5),
                 ),
-                child: const Center(
-                  child: Text('🌿', style: TextStyle(fontSize: 38)),
+                child: Center(
+                  child: Text(
+                    initial,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 34,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
                 ),
               ),
               const SizedBox(height: 12),
-              Text('WarmiBot v1.0',
+              Text(user?.displayName ?? 'Usuario de WarmiBot',
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
                       color: AppColors.accentGreen,
                       fontWeight: FontWeight.w700)),
-              Text('Asistente Virtual Amazónico',
+              Text(user?.email ?? 'Sesión no disponible',
                   style: Theme.of(context)
                       .textTheme
                       .bodyMedium
                       ?.copyWith(color: AppColors.textMuted)),
+              const SizedBox(height: 4),
+              Text(
+                user?.isAdmin == true ? 'Rol: administrador' : 'Rol: usuario',
+                style: Theme.of(context)
+                    .textTheme
+                    .labelMedium
+                    ?.copyWith(color: AppColors.textSecondary),
+              ),
             ]),
           ),
           const SizedBox(height: 24),
@@ -160,6 +208,13 @@ class ProfilePage extends StatelessWidget {
           _tile(Icons.translate_rounded, 'Identidad Kichwa',
               '"Warmi" = mujer, sabia, protectora', context),
 
+          const SizedBox(height: 20),
+          FilledButton.icon(
+            onPressed: session == null ? null : () => _confirmSignOut(context),
+            icon: const Icon(Icons.logout_rounded),
+            label: const Text('Cerrar sesión'),
+          ),
+
           const SizedBox(height: 24),
           // Versión
           Center(
@@ -172,6 +227,33 @@ class ProfilePage extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  Future<void> _confirmSignOut(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Cerrar sesión'),
+        content: const Text(
+          '¿Deseas salir de WarmiBot? Para volver a las funciones protegidas tendrás que autenticarte nuevamente.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Cerrar sesión'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+    await context.read<AuthCubit>().signOut(
+          message: 'Sesión cerrada. Credenciales y datos locales eliminados.',
+        );
+    if (context.mounted) context.go('/login');
   }
 
   Widget _sectionTitle(String title, BuildContext context) => Padding(

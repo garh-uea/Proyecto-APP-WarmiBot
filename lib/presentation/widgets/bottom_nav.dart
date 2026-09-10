@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 import '../../core/theme/app_theme.dart';
 
 class WarmiBottomNav extends StatelessWidget {
-  final int    currentIndex;
+  final int currentIndex;
   final void Function(int) onTap;
 
   const WarmiBottomNav({
@@ -26,29 +26,30 @@ class WarmiBottomNav extends StatelessWidget {
       ),
       child: BottomNavigationBar(
         currentIndex: currentIndex,
-        onTap:        onTap,
+        onTap: onTap,
         backgroundColor: Colors.transparent,
-        elevation:    0,
-        selectedItemColor:   AppColors.accentGreen,
+        elevation: 0,
+        selectedItemColor: AppColors.accentGreen,
         unselectedItemColor: AppColors.textMuted,
         type: BottomNavigationBarType.fixed,
-        selectedLabelStyle:   const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+        selectedLabelStyle:
+            const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
         unselectedLabelStyle: const TextStyle(fontSize: 11),
         items: const [
           BottomNavigationBarItem(
-            icon:  Icon(Icons.home_rounded),
+            icon: Icon(Icons.home_rounded),
             label: 'Inicio',
           ),
           BottomNavigationBarItem(
-            icon:  Icon(Icons.chat_bubble_outline_rounded),
+            icon: Icon(Icons.chat_bubble_outline_rounded),
             label: 'Conversaciones',
           ),
           BottomNavigationBarItem(
-            icon:  Icon(Icons.notifications_none_rounded),
+            icon: Icon(Icons.notifications_none_rounded),
             label: 'Recordatorios',
           ),
           BottomNavigationBarItem(
-            icon:  Icon(Icons.person_outline_rounded),
+            icon: Icon(Icons.person_outline_rounded),
             label: 'Perfil',
           ),
         ],

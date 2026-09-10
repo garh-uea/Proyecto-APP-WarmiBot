@@ -14,7 +14,7 @@ Proyecto integrador de la Universidad Estatal Amazónica, Tena, Napo, Ecuador.
 - FastAPI 0.139.2 y Uvicorn 0.51.0 sobre Python 3.14.4.
 - `flutter doctor -v`: sin hallazgos.
 - `flutter analyze --no-pub`: sin incidencias.
-- `flutter test --no-pub`: 9 pruebas aprobadas.
+- `flutter test --no-pub`: 21 pruebas aprobadas.
 - `pytest -q -p no:cacheprovider`: 11 pruebas aprobadas.
 - APK de depuración: `build/app/outputs/flutter-apk/app-debug.apk`.
 - Comunicación móvil-API verificada mediante `GET /health` con HTTP 200.
@@ -72,6 +72,23 @@ FastAPI en el equipo anfitrión (0.0.0.0:800)
 `10.0.2.2` es la dirección especial con la que el emulador Android accede al
 `localhost` del equipo anfitrión. No se debe usar `127.0.0.1` desde el emulador,
 porque allí representa al propio dispositivo virtual.
+
+## Navegación, sesión y enlaces profundos
+
+WarmiBot usa navegación declarativa con `go_router`. Las rutas públicas son
+`/login`, `/registro` y `/estado-api`; Inicio, conversaciones, recordatorios,
+perfil, trabajos y diagnóstico requieren sesión. Los tokens JWT se guardan con
+almacenamiento seguro del sistema operativo.
+
+Un `401` intenta renovar el access token; si la renovación falla, limpia la
+sesión y redirige a `/login`. Un `403` no cierra la sesión: muestra
+`/acceso-restringido`, porque la identidad es válida pero no tiene el rol
+necesario.
+
+En Android o iOS se puede abrir una ruta mediante el esquema registrado, por
+ejemplo `warmibot://app/conversaciones/1`. En Flutter web se conserva el mismo
+mapa mediante rutas URL. Si un enlace protegido llega sin sesión, la aplicación
+recuerda el destino en `from` y lo abre después de autenticar al usuario.
 
 ## Requisitos
 

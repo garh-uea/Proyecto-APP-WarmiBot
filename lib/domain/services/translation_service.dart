@@ -10,17 +10,19 @@ class TranslationService {
   TranslationService._();
   static final TranslationService instance = TranslationService._();
 
-  Future<String> translate(String text, String targetLang, {String sourceLang = 'auto'}) async {
+  Future<String> translate(String text, String targetLang,
+      {String sourceLang = 'auto'}) async {
     if (text.trim().isEmpty) return '';
 
     // Usar la API pública de Google Translate (sin key)
-    final uri = Uri.parse('https://translate.googleapis.com/translate_a/single').replace(
+    final uri = Uri.parse('https://translate.googleapis.com/translate_a/single')
+        .replace(
       queryParameters: {
         'client': 'gtx',
-        'sl':     sourceLang,
-        'tl':     targetLang,
-        'dt':     't',
-        'q':      text,
+        'sl': sourceLang,
+        'tl': targetLang,
+        'dt': 't',
+        'q': text,
       },
     );
 
@@ -38,7 +40,8 @@ class TranslationService {
         return result.toString().trim();
       }
     } catch (e) {
-      throw Exception('No pude conectarme al servicio de traducción. Verifica tu conexión.');
+      throw Exception(
+          'No pude conectarme al servicio de traducción. Verifica tu conexión.');
     }
 
     throw Exception('Error en el servicio de traducción.');

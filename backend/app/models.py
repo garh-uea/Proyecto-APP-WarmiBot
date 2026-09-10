@@ -5,7 +5,16 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any
 
-from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, JSON, String, Text
+from sqlalchemy import (
+    Boolean,
+    DateTime,
+    Enum,
+    ForeignKey,
+    JSON,
+    String,
+    Text,
+    UniqueConstraint,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .database import Base
@@ -46,6 +55,9 @@ class User(Base):
     )
     refresh_tokens: Mapped[list[RefreshToken]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
+    )
+    reminders: Mapped[list[ReminderRecord]] = relationship(
+        back_populates="owner", cascade="all, delete-orphan"
     )
 
 
@@ -99,6 +111,32 @@ class RefreshToken(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
     user: Mapped[User] = relationship(back_populates="refresh_tokens")
+
+
+class ReminderRecord(Base):
+    __tablename__ = "reminders"
+    __table_args__ = (
+        UniqueConstraint("user_id", "client_id", name="uq_reminder_user_client"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    client_id: Mapped[str] = mapped_column(String(80), index=True)
+    text: Mapped[str] = mapped_column(String(500))
+    scheduled_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    reminder_type: Mapped[str] = mapped_column(String(20), default="reminder")
+    is_completed: Mapped[bool] = mapped_column(Boolean, default=False)
+    deleted: Mapped[bool] = mapped_column(Boolean, default=False)
+    version: Mapped[int] = mapped_column(default=1)
+    client_updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow
+    )
+
+    owner: Mapped[User] = relationship(back_populates="reminders")
 
 
 class AsyncJob(Base):

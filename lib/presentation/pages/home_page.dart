@@ -55,7 +55,7 @@ class _HomePageState extends State<HomePage> {
           decoration: const BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topCenter,
-              end:   Alignment.bottomCenter,
+              end: Alignment.bottomCenter,
               colors: AppColors.bgGradient,
             ),
           ),
@@ -73,9 +73,8 @@ class _HomePageState extends State<HomePage> {
             // ── Acciones rápidas (visibles siempre) ───────────────────
             if (state.messages.length <= 2)
               QuickActionsGrid(
-                onAction: (cmd) => context
-                    .read<AssistantBloc>()
-                    .add(ProcessTextCommand(cmd)),
+                onAction: (cmd) =>
+                    context.read<AssistantBloc>().add(ProcessTextCommand(cmd)),
               ),
 
             // ── Barra de input ──────────────────────────────────────────
@@ -107,8 +106,8 @@ class _HomePageState extends State<HomePage> {
         // Avatar central grande
         WarmiAvatar(
           avatarState: state.avatarState,
-          soundLevel:  state.soundLevel,
-          size:        200,
+          soundLevel: state.soundLevel,
+          size: 200,
         ),
         const SizedBox(height: 20),
         // Burbuja de saludo (fiel al diseño)
@@ -123,7 +122,7 @@ class _HomePageState extends State<HomePage> {
                   color: AppColors.accentGreen.withValues(alpha: 0.3)),
               boxShadow: [
                 BoxShadow(
-                  color:      AppColors.primaryGreen.withValues(alpha: 0.15),
+                  color: AppColors.primaryGreen.withValues(alpha: 0.15),
                   blurRadius: 20,
                   spreadRadius: 2,
                 ),
@@ -134,14 +133,16 @@ class _HomePageState extends State<HomePage> {
               children: [
                 const Text('👋 ¡Hola!',
                     style: TextStyle(
-                        fontSize:   18,
+                        fontSize: 18,
                         fontWeight: FontWeight.w700,
-                        color:      AppColors.textPrimary)),
+                        color: AppColors.textPrimary)),
                 const SizedBox(height: 6),
                 Text(
                   'Soy WarmiBot,\n¿En qué puedo ayudarte hoy?',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: AppColors.textSecondary, height: 1.5),
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodyMedium
+                      ?.copyWith(color: AppColors.textSecondary, height: 1.5),
                 ),
               ],
             ),
@@ -160,18 +161,17 @@ class _HomePageState extends State<HomePage> {
         padding: const EdgeInsets.only(top: 8, bottom: 4),
         child: WarmiAvatar(
           avatarState: state.avatarState,
-          soundLevel:  state.soundLevel,
-          size:        90,
+          soundLevel: state.soundLevel,
+          size: 90,
         ),
       ),
       // Lista de mensajes
       Expanded(
         child: ListView.builder(
-          controller:  _scrollCtrl,
-          padding:     const EdgeInsets.only(top: 4, bottom: 8),
-          itemCount:   state.messages.length,
-          itemBuilder: (_, i) =>
-              ChatBubble(message: state.messages[i]),
+          controller: _scrollCtrl,
+          padding: const EdgeInsets.only(top: 4, bottom: 8),
+          itemCount: state.messages.length,
+          itemBuilder: (_, i) => ChatBubble(message: state.messages[i]),
         ),
       ),
     ]);
@@ -193,7 +193,7 @@ class _WarmiAppBar extends StatelessWidget {
         child: Row(children: [
           // Menú
           IconButton(
-            icon:  const Icon(Icons.menu_rounded),
+            icon: const Icon(Icons.menu_rounded),
             color: AppColors.textSecondary,
             onPressed: () => Scaffold.of(context).openDrawer(),
           ),
@@ -206,15 +206,17 @@ class _WarmiAppBar extends StatelessWidget {
                 Text(
                   'WarmiBot',
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        color:      AppColors.accentGreen,
+                        color: AppColors.accentGreen,
                         fontWeight: FontWeight.w800,
                         letterSpacing: 0.5,
                       ),
                 ),
                 Text(
                   'Tu asistente inteligente',
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: AppColors.textMuted),
+                  style: Theme.of(context)
+                      .textTheme
+                      .labelSmall
+                      ?.copyWith(color: AppColors.textMuted),
                 ),
                 const BackendStatusIndicator(),
               ],
@@ -224,17 +226,19 @@ class _WarmiAppBar extends StatelessWidget {
           // Notificaciones
           Stack(children: [
             IconButton(
-              icon:  const Icon(Icons.notifications_none_rounded),
+              icon: const Icon(Icons.notifications_none_rounded),
               color: AppColors.textSecondary,
               onPressed: () {},
             ),
             Positioned(
-              right: 8, top: 8,
+              right: 8,
+              top: 8,
               child: Container(
-                width: 8, height: 8,
+                width: 8,
+                height: 8,
                 decoration: const BoxDecoration(
-                  color:  AppColors.accentGreen,
-                  shape:  BoxShape.circle,
+                  color: AppColors.accentGreen,
+                  shape: BoxShape.circle,
                 ),
               ),
             ),
@@ -244,20 +248,21 @@ class _WarmiAppBar extends StatelessWidget {
           GestureDetector(
             onTap: () {},
             child: Container(
-              width: 34, height: 34,
+              width: 34,
+              height: 34,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                gradient: const LinearGradient(
-                  colors: AppColors.avatarGradient),
+                gradient:
+                    const LinearGradient(colors: AppColors.avatarGradient),
                 border: Border.all(
                     color: AppColors.accentGreen.withValues(alpha: 0.5)),
               ),
               child: const Center(
                 child: Text('G',
                     style: TextStyle(
-                        color:      Colors.white,
+                        color: Colors.white,
                         fontWeight: FontWeight.bold,
-                        fontSize:   14)),
+                        fontSize: 14)),
               ),
             ),
           ),

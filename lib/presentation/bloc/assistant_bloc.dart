@@ -419,9 +419,9 @@ class AssistantBloc extends Bloc<AssistantEvent, AssistantState> {
   }
 
   @override
-  Future<void> close() {
-    _tts.dispose();
+  Future<void> close() async {
+    await _tts.dispose();
     _stt.dispose();
-    return super.close();
+    await super.close();
   }
 }

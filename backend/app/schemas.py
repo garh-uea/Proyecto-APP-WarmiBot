@@ -69,6 +69,32 @@ class ConversationOut(BaseModel):
     messages: list[MessageOut]
 
 
+class ReminderSyncRequest(BaseModel):
+    client_id: str = Field(min_length=10, max_length=80)
+    operation: Literal["upsert", "delete"]
+    text: str = Field(default="", max_length=500)
+    scheduled_at: datetime
+    reminder_type: Literal["reminder", "alarm", "timer"] = "reminder"
+    is_completed: bool = False
+    base_version: int = Field(default=0, ge=0)
+    client_updated_at: datetime
+
+
+class ReminderOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    client_id: str
+    text: str
+    scheduled_at: datetime
+    reminder_type: str
+    is_completed: bool
+    deleted: bool
+    version: int
+    client_updated_at: datetime
+    updated_at: datetime
+
+
 class JobOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

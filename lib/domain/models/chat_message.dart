@@ -5,6 +5,7 @@
 import 'package:equatable/equatable.dart';
 
 enum MessageSender { user, bot }
+
 enum MessageType { text, audio, error, loading }
 
 class ChatMessage extends Equatable {

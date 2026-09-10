@@ -6,7 +6,8 @@ plugins {
 
 android {
     namespace = "com.uea.warmibot"
-    compileSdk = flutter.compileSdkVersion
+    // flutter_secure_storage 11 requiere compilar con Android API 37.
+    compileSdk = 37
     ndkVersion = flutter.ndkVersion
 
     compileOptions {

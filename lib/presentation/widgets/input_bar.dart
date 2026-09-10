@@ -24,8 +24,8 @@ class InputBar extends StatefulWidget {
 }
 
 class _InputBarState extends State<InputBar> {
-  final _ctrl   = TextEditingController();
-  final _focus  = FocusNode();
+  final _ctrl = TextEditingController();
+  final _focus = FocusNode();
   bool _hasText = false;
 
   @override
@@ -68,19 +68,19 @@ class _InputBarState extends State<InputBar> {
           // ── Campo de texto ─────────────────────────────────────────────
           Expanded(
             child: TextField(
-              controller:  _ctrl,
-              focusNode:   _focus,
+              controller: _ctrl,
+              focusNode: _focus,
               textInputAction: TextInputAction.send,
-              onSubmitted:     (_) => _submit(),
-              style: const TextStyle(
-                  color: AppColors.textPrimary, fontSize: 15),
+              onSubmitted: (_) => _submit(),
+              style:
+                  const TextStyle(color: AppColors.textPrimary, fontSize: 15),
               decoration: InputDecoration(
-                hintText:     'Escribe o habla...',
-                isDense:      true,
-                border:       OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(24)),
-                contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16, vertical: 10),
+                hintText: 'Escribe o habla...',
+                isDense: true,
+                border:
+                    OutlineInputBorder(borderRadius: BorderRadius.circular(24)),
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                 suffixIcon: _hasText
                     ? IconButton(
                         icon: const Icon(Icons.send_rounded,
@@ -96,8 +96,8 @@ class _InputBarState extends State<InputBar> {
           // ── Botón de voz ───────────────────────────────────────────────
           VoiceButton(
             avatarState: widget.avatarState,
-            onTap:       widget.onVoiceTap,
-            size:        48,
+            onTap: widget.onVoiceTap,
+            size: 48,
           ),
         ]),
       ),

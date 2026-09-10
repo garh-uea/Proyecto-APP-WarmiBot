@@ -258,10 +258,6 @@ class AlarmService {
     }
 
     var exactAllowed = await android.canScheduleExactNotifications();
-    if (exactAllowed == false) {
-      await android.requestExactAlarmsPermission();
-      exactAllowed = await android.canScheduleExactNotifications();
-    }
     return exactAllowed == false
         ? AndroidScheduleMode.inexactAllowWhileIdle
         : AndroidScheduleMode.exactAllowWhileIdle;

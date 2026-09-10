@@ -14,17 +14,16 @@ class SearchService {
 
   Future<String> searchWikipedia(String query, {int sentences = 3}) async {
     // 1. Buscar título exacto
-    final searchUri = Uri.parse(
-      'https://es.wikipedia.org/w/api.php'
-    ).replace(queryParameters: {
+    final searchUri = Uri.parse('https://es.wikipedia.org/w/api.php')
+        .replace(queryParameters: {
       'action': 'opensearch',
       'search': query,
-      'limit':  '1',
+      'limit': '1',
       'format': 'json',
     });
 
-    final searchResp = await http.get(searchUri)
-        .timeout(const Duration(seconds: 8));
+    final searchResp =
+        await http.get(searchUri).timeout(const Duration(seconds: 8));
     if (searchResp.statusCode != 200) {
       return await _searchDuckDuckGo(query);
     }
@@ -38,27 +37,26 @@ class SearchService {
     final title = titles.first as String;
 
     // 2. Obtener extracto del artículo
-    final extractUri = Uri.parse(
-      'https://es.wikipedia.org/w/api.php'
-    ).replace(queryParameters: {
-      'action':        'query',
-      'titles':        title,
-      'prop':          'extracts',
-      'exintro':       'true',
-      'explaintext':   'true',
-      'exsentences':   sentences.toString(),
-      'format':        'json',
+    final extractUri = Uri.parse('https://es.wikipedia.org/w/api.php')
+        .replace(queryParameters: {
+      'action': 'query',
+      'titles': title,
+      'prop': 'extracts',
+      'exintro': 'true',
+      'explaintext': 'true',
+      'exsentences': sentences.toString(),
+      'format': 'json',
     });
 
-    final extractResp = await http.get(extractUri)
-        .timeout(const Duration(seconds: 8));
+    final extractResp =
+        await http.get(extractUri).timeout(const Duration(seconds: 8));
     if (extractResp.statusCode != 200) {
       return await _searchDuckDuckGo(query);
     }
 
-    final data  = jsonDecode(extractResp.body) as Map<String, dynamic>;
+    final data = jsonDecode(extractResp.body) as Map<String, dynamic>;
     final pages = (data['query']['pages'] as Map<String, dynamic>);
-    final page  = pages.values.first as Map<String, dynamic>;
+    final page = pages.values.first as Map<String, dynamic>;
     final extract = (page['extract'] as String? ?? '').trim();
 
     if (extract.isEmpty) return await _searchDuckDuckGo(query);
@@ -73,11 +71,11 @@ class SearchService {
   Future<String> _searchDuckDuckGo(String query) async {
     final uri = Uri.parse('https://api.duckduckgo.com/').replace(
       queryParameters: {
-        'q':              query,
-        'format':         'json',
-        'no_redirect':    '1',
-        'skip_disambig':  '1',
-        'kl':             'es-es',
+        'q': query,
+        'format': 'json',
+        'no_redirect': '1',
+        'skip_disambig': '1',
+        'kl': 'es-es',
       },
     );
 
@@ -93,6 +91,6 @@ class SearchService {
     } catch (_) {}
 
     return 'No encontré información sobre "$query". '
-           'Intenta con palabras más específicas.';
+        'Intenta con palabras más específicas.';
   }
 }

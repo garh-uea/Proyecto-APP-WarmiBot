@@ -9,8 +9,7 @@ class BackendStatusIndicator extends StatefulWidget {
   const BackendStatusIndicator({super.key, this.service});
 
   @override
-  State<BackendStatusIndicator> createState() =>
-      _BackendStatusIndicatorState();
+  State<BackendStatusIndicator> createState() => _BackendStatusIndicatorState();
 }
 
 class _BackendStatusIndicatorState extends State<BackendStatusIndicator> {
