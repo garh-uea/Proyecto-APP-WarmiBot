@@ -5,7 +5,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import '../../core/network/api_client.dart';
+import '../../core/network/api_environment.dart';
 import '../../core/theme/app_theme.dart';
+import '../../domain/services/backend_api_service.dart';
 import '../bloc/assistant_bloc.dart';
 import '../bloc/assistant_event.dart';
 import '../bloc/assistant_state.dart';
@@ -125,8 +128,57 @@ class ConversationsView extends StatelessWidget {
 // WarmiBot — ProfilePage (ajustes básicos)
 // ============================================================
 
-class ProfilePage extends StatelessWidget {
+class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
+
+  @override
+  State<ProfilePage> createState() => _ProfilePageState();
+}
+
+class _ProfilePageState extends State<ProfilePage> {
+  final BackendApiService _api = BackendApiService();
+  String? _demoMessage;
+  Map<String, String> _fieldErrors = const {};
+  bool _demoBusy = false;
+
+  Future<void> _demonstrateRefresh() async {
+    setState(() {
+      _demoBusy = true;
+      _demoMessage = 'Enviando una petición con access token vencido…';
+      _fieldErrors = const {};
+    });
+    try {
+      await _api.forceAutomaticRefreshDemo();
+      if (!mounted) return;
+      setState(() {
+        _demoMessage = NetworkDiagnostics.instance.trace.value?.message ??
+            'HTTP 401 interceptado → token renovado → reintento correcto.';
+      });
+    } on BackendApiException catch (error) {
+      if (mounted) setState(() => _demoMessage = error.message);
+    } finally {
+      if (mounted) setState(() => _demoBusy = false);
+    }
+  }
+
+  Future<void> _demonstrate422() async {
+    setState(() {
+      _demoBusy = true;
+      _demoMessage = 'Enviando campos inválidos de forma controlada…';
+      _fieldErrors = const {};
+    });
+    try {
+      await _api.forceValidation422Demo();
+    } on BackendApiException catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _fieldErrors = error.fieldErrors;
+        _demoMessage = 'HTTP ${error.statusCode}: ${error.message}';
+      });
+    } finally {
+      if (mounted) setState(() => _demoBusy = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -198,6 +250,57 @@ class ProfilePage extends StatelessWidget {
           _tile(Icons.contact_phone_rounded, 'Contactos',
               'Gestionar contactos WhatsApp', context),
           _tile(Icons.key_rounded, 'API Keys', 'OpenWeatherMap y más', context),
+
+          if (ApiEnvironment.diagnosticsEnabled) ...[
+            const SizedBox(height: 16),
+            _sectionTitle('Demostración de red', context),
+            _demoTile(
+              context,
+              icon: Icons.autorenew_rounded,
+              title: 'Forzar renovación automática',
+              subtitle: 'Provoca un 401 controlado y reintenta una sola vez',
+              onTap: _demoBusy ? null : _demonstrateRefresh,
+            ),
+            _demoTile(
+              context,
+              icon: Icons.rule_rounded,
+              title: 'Comprobar respuesta 422',
+              subtitle: 'Muestra los errores asociados a cada campo',
+              onTap: _demoBusy ? null : _demonstrate422,
+            ),
+            if (_demoMessage != null)
+              Semantics(
+                liveRegion: true,
+                label: _demoMessage,
+                child: Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(14),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _demoMessage!,
+                          style: const TextStyle(
+                            color: AppColors.accentGreen,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        for (final error in _fieldErrors.entries)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 5),
+                            child: Text(
+                              '${error.key}: ${error.value}',
+                              style: const TextStyle(
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+          ],
 
           const SizedBox(height: 16),
           _sectionTitle('Información', context),
@@ -292,6 +395,35 @@ class ProfilePage extends StatelessWidget {
           trailing: const Icon(Icons.chevron_right_rounded,
               color: AppColors.textMuted, size: 20),
           onTap: () {},
+        ),
+      ),
+    );
+  }
+
+  Widget _demoTile(
+    BuildContext context, {
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required VoidCallback? onTap,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Material(
+        color: AppColors.bgCard,
+        borderRadius: BorderRadius.circular(12),
+        child: ListTile(
+          minTileHeight: 56,
+          leading: Icon(icon, color: AppColors.accentGreen),
+          title: Text(title),
+          subtitle: Text(subtitle),
+          trailing: _demoBusy
+              ? const SizedBox.square(
+                  dimension: 22,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.play_arrow_rounded),
+          onTap: onTap,
         ),
       ),
     );

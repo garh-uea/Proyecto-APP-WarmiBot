@@ -4,8 +4,10 @@
 // ============================================================
 
 import 'dart:convert';
-import 'package:http/http.dart' as http;
-import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:dio/dio.dart';
+
+import '../../core/network/api_client.dart';
+import '../../core/network/api_environment.dart';
 
 class WeatherResult {
   final String city;
@@ -33,9 +35,9 @@ class WeatherResult {
 }
 
 class WeatherService {
-  final http.Client _client;
+  final Dio _client;
 
-  WeatherService({http.Client? client}) : _client = client ?? http.Client();
+  WeatherService({Dio? client}) : _client = client ?? ApiClient.instance.dio;
   static final WeatherService instance = WeatherService();
 
   static const String _baseUrl =
@@ -51,12 +53,7 @@ class WeatherService {
           'Escribe el nombre de una ciudad para consultar el clima.');
     }
 
-    var apiKey = '';
-    try {
-      apiKey = dotenv.env['OPENWEATHER_API_KEY']?.trim() ?? '';
-    } catch (_) {
-      // Las pruebas y compilaciones sin .env usan directamente el respaldo.
-    }
+    final apiKey = ApiEnvironment.openWeatherApiKey.trim();
     if (RegExp(r'^[a-fA-F0-9]{32}$').hasMatch(apiKey)) {
       try {
         return await _getOpenWeather(cleanCity, country, apiKey);
@@ -81,10 +78,16 @@ class WeatherService {
       'lang': 'es',
     });
 
-    final response = await _client.get(uri).timeout(const Duration(seconds: 8));
+    final response = await _client.getUri<dynamic>(
+      uri,
+      options: Options(extra: const {
+        skipAuthKey: true,
+        skipRefreshKey: true,
+      }),
+    );
 
     if (response.statusCode == 200) {
-      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      final data = _jsonMap(response.data);
       final main = data['main'] as Map<String, dynamic>;
       final weather = (data['weather'] as List).first as Map<String, dynamic>;
       final wind = data['wind'] as Map<String, dynamic>;
@@ -118,7 +121,13 @@ class WeatherService {
       'wind_speed_unit': 'kmh',
       'timezone': 'auto',
     });
-    final response = await _client.get(uri).timeout(const Duration(seconds: 8));
+    final response = await _client.getUri<dynamic>(
+      uri,
+      options: Options(extra: const {
+        skipAuthKey: true,
+        skipRefreshKey: true,
+      }),
+    );
     if (response.statusCode != 200) {
       throw Exception(
         'El servicio meteorológico no respondió correctamente '
@@ -126,7 +135,7 @@ class WeatherService {
       );
     }
 
-    final data = jsonDecode(response.body) as Map<String, dynamic>;
+    final data = _jsonMap(response.data);
     final current = data['current'] as Map<String, dynamic>?;
     if (current == null) {
       throw Exception('El servicio meteorológico no devolvió datos actuales.');
@@ -158,10 +167,16 @@ class WeatherService {
     if (country.isNotEmpty) parameters['countryCode'] = country;
 
     final uri = Uri.parse(_geocodingUrl).replace(queryParameters: parameters);
-    final response = await _client.get(uri).timeout(const Duration(seconds: 8));
+    final response = await _client.getUri<dynamic>(
+      uri,
+      options: Options(extra: const {
+        skipAuthKey: true,
+        skipRefreshKey: true,
+      }),
+    );
     if (response.statusCode != 200) return null;
 
-    final data = jsonDecode(response.body) as Map<String, dynamic>;
+    final data = _jsonMap(response.data);
     final results = data['results'] as List<dynamic>?;
     if (results == null || results.isEmpty) return null;
     return Map<String, dynamic>.from(results.first as Map);
@@ -181,4 +196,8 @@ class WeatherService {
     if ({95, 96, 99}.contains(code)) return 'con tormenta';
     return 'con condiciones variables';
   }
+
+  static Map<String, dynamic> _jsonMap(dynamic value) => value is String
+      ? jsonDecode(value) as Map<String, dynamic>
+      : Map<String, dynamic>.from(value as Map);
 }

@@ -37,6 +37,10 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>WarmiBot usa el micrófono solo al pulsar Hablar para convertir tu voz en comandos y recordatorios.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>WarmiBot convierte tus comandos hablados en texto para responderte y guardar recordatorios cuando tú lo solicitas.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

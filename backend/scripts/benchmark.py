@@ -9,7 +9,7 @@ import httpx
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Benchmark reproducible de WarmiBot")
-    parser.add_argument("--base-url", default="http://127.0.0.1:800")
+    parser.add_argument("--base-url", default="http://127.0.0.1:8000")
     parser.add_argument("--email", default="admin@warmibot.com")
     parser.add_argument("--password", default="ChangeMe123!")
     args = parser.parse_args()

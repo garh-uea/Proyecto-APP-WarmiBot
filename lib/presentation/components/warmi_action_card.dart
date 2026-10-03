@@ -35,9 +35,7 @@ class WarmiActionCard extends StatelessWidget {
         color: selected ? colors.interactive : colors.surface,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(radii.medium),
-          side: BorderSide(
-            color: selected ? colors.focus : colors.outline,
-          ),
+          side: BorderSide(color: selected ? colors.focus : colors.outline),
         ),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
@@ -48,7 +46,7 @@ class WarmiActionCard extends StatelessWidget {
               minHeight: sizes.minTouchTarget,
             ),
             child: Padding(
-              padding: EdgeInsets.all(spacing.xs),
+              padding: EdgeInsets.all(spacing.xxs),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -57,10 +55,10 @@ class WarmiActionCard extends StatelessWidget {
                   Text(
                     label,
                     style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          color: selected
-                              ? colors.onInteractive
-                              : colors.textSecondary,
-                        ),
+                      color: selected
+                          ? colors.onInteractive
+                          : colors.textSecondary,
+                    ),
                     textAlign: TextAlign.center,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,

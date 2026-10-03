@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../core/network/secure_token_store.dart';
 import '../../domain/services/alarm_service.dart';
 import '../../domain/services/backend_api_service.dart';
 import 'reminders_repository.dart';
@@ -20,32 +21,35 @@ class AuthSession {
 }
 
 class AuthRepository {
-  static const _accessKey = 'auth_access_token';
-  static const _refreshKey = 'auth_refresh_token';
   static const _userKey = 'auth_cached_user';
 
   final BackendApiService api;
   final FlutterSecureStorage storage;
+  final TokenStore tokenStore;
 
   AuthRepository({
     BackendApiService? api,
     FlutterSecureStorage? storage,
+    TokenStore? tokenStore,
   })  : api = api ?? BackendApiService(),
-        storage = storage ?? const FlutterSecureStorage();
+        storage = storage ?? const FlutterSecureStorage(),
+        tokenStore = tokenStore ?? SecureTokenStore.instance;
 
   Future<AuthSession?> restore() async {
-    final access = await storage.read(key: _accessKey);
-    final refresh = await storage.read(key: _refreshKey);
-    if (access == null || refresh == null) return null;
+    final stored = await tokenStore.read();
+    if (stored == null) return null;
+    final access = stored.accessToken;
+    final refresh = stored.refreshToken;
     final cachedUser = await _readCachedUser();
 
     try {
       final user = await api.currentUser(access);
       await _saveUser(user);
+      final current = await tokenStore.read() ?? stored;
       return AuthSession(
         user: user,
-        accessToken: access,
-        refreshToken: refresh,
+        accessToken: current.accessToken,
+        refreshToken: current.refreshToken,
       );
     } on BackendApiException catch (error) {
       if (error.isUnauthorized) {
@@ -64,7 +68,11 @@ class AuthRepository {
 
   Future<AuthSession> signIn(String email, String password) async {
     final tokens = await api.login(email: email, password: password);
-    final user = await api.currentUser(tokens.accessToken);
+    await tokenStore.write(StoredTokens(
+      accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
+    ));
+    final user = tokens.user ?? await api.currentUser();
     await _save(tokens, user);
     return AuthSession(
       user: user,
@@ -93,7 +101,11 @@ class AuthRepository {
   }) async {
     try {
       final tokens = await api.refresh(refreshToken);
-      final user = await api.currentUser(tokens.accessToken);
+      await tokenStore.write(StoredTokens(
+        accessToken: tokens.accessToken,
+        refreshToken: tokens.refreshToken,
+      ));
+      final user = tokens.user ?? await api.currentUser();
       await _save(tokens, user);
       return AuthSession(
         user: user,
@@ -103,12 +115,12 @@ class AuthRepository {
     } on BackendApiException catch (error) {
       if (error.isUnauthorized) await clear();
       if (error.statusCode == null && cachedUser != null) {
-        final access = await storage.read(key: _accessKey);
-        if (access != null) {
+        final stored = await tokenStore.read();
+        if (stored != null) {
           return AuthSession(
             user: cachedUser,
-            accessToken: access,
-            refreshToken: refreshToken,
+            accessToken: stored.accessToken,
+            refreshToken: stored.refreshToken,
           );
         }
       }
@@ -119,9 +131,9 @@ class AuthRepository {
   Future<void> signOut(AuthSession? session) async {
     if (session != null) {
       try {
+        final stored = await tokenStore.read();
         await api.logout(
-          accessToken: session.accessToken,
-          refreshToken: session.refreshToken,
+          refreshToken: stored?.refreshToken ?? session.refreshToken,
         );
       } catch (_) {
         // El cierre local no debe quedar bloqueado por una API inaccesible.
@@ -139,8 +151,10 @@ class AuthRepository {
   }
 
   Future<void> _save(AuthTokenPair tokens, BackendUser user) async {
-    await storage.write(key: _accessKey, value: tokens.accessToken);
-    await storage.write(key: _refreshKey, value: tokens.refreshToken);
+    await tokenStore.write(StoredTokens(
+      accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
+    ));
     await _saveUser(user);
   }
 
@@ -162,6 +176,7 @@ class AuthRepository {
   }
 
   Future<void> clear() async {
+    await tokenStore.clear();
     await storage.deleteAll();
   }
 }

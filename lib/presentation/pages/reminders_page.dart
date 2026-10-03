@@ -7,8 +7,10 @@ import 'package:intl/intl.dart';
 import '../../core/theme/app_theme.dart';
 import '../../domain/models/reminder.dart';
 import '../../domain/services/alarm_service.dart';
+import '../../domain/services/device_capability_service.dart';
 import '../../infrastructure/repositories/reminders_repository.dart';
 import '../bloc/auth_cubit.dart';
+import '../widgets/capability_permission_prompt.dart';
 
 class RemindersPage extends StatefulWidget {
   const RemindersPage({super.key});
@@ -148,19 +150,29 @@ class _RemindersPageState extends State<RemindersPage> {
         scheduledAt: DateTime.now().add(const Duration(hours: 1)),
       ),
     );
-    var notificationScheduled = true;
-    try {
-      await AlarmService.instance.scheduleReminder(reminder);
-    } catch (_) {
-      notificationScheduled = false;
+    if (!mounted) return;
+    final notificationAllowed = await CapabilityPermissionPrompt.ensure(
+      context,
+      DeviceCapability.notifications,
+    );
+    var notificationScheduled = false;
+    if (notificationAllowed) {
+      try {
+        await AlarmService.instance.scheduleReminder(reminder);
+        notificationScheduled = true;
+      } catch (_) {
+        // El registro y su operación de salida ya están en SQLite.
+      }
     }
     await _loadLocal(showLoading: false);
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(notificationScheduled
-            ? 'Guardado en el dispositivo. Se enviará cuando exista conexión.'
-            : 'Guardado localmente. Activa notificaciones para recibir la alerta.'),
+        content: Text(
+          notificationScheduled
+              ? 'Guardado en el dispositivo. Se enviará cuando exista conexión.'
+              : 'Guardado localmente. Activa notificaciones para recibir la alerta.',
+        ),
       ),
     );
     await _refreshAndSync(showLoading: false);
@@ -219,21 +231,20 @@ class _RemindersPageState extends State<RemindersPage> {
                     ),
                   )
                 : _reminders.isEmpty
-                    ? _emptyState()
-                    : RefreshIndicator(
-                        onRefresh: () => _refreshAndSync(showLoading: false),
-                        child: ListView.separated(
-                          padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
-                          itemCount: _reminders.length,
-                          separatorBuilder: (_, __) =>
-                              const SizedBox(height: 10),
-                          itemBuilder: (_, index) => _ReminderCard(
-                            reminder: _reminders[index],
-                            onComplete: () => _complete(_reminders[index]),
-                            onDelete: () => _delete(_reminders[index]),
-                          ),
-                        ),
+                ? _emptyState()
+                : RefreshIndicator(
+                    onRefresh: () => _refreshAndSync(showLoading: false),
+                    child: ListView.separated(
+                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
+                      itemCount: _reminders.length,
+                      separatorBuilder: (_, _) => const SizedBox(height: 10),
+                      itemBuilder: (_, index) => _ReminderCard(
+                        reminder: _reminders[index],
+                        onComplete: () => _complete(_reminders[index]),
+                        onDelete: () => _delete(_reminders[index]),
                       ),
+                    ),
+                  ),
           ),
         ],
       ),
@@ -241,29 +252,27 @@ class _RemindersPageState extends State<RemindersPage> {
   }
 
   Widget _emptyState() => Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Text('📌', style: TextStyle(fontSize: 48)),
-            const SizedBox(height: 16),
-            Text(
-              'Sin recordatorios todavía',
-              style: Theme.of(context)
-                  .textTheme
-                  .titleLarge
-                  ?.copyWith(color: AppColors.textSecondary),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Puedes crear uno incluso sin conexión.',
-              style: Theme.of(context)
-                  .textTheme
-                  .bodyMedium
-                  ?.copyWith(color: AppColors.textMuted),
-            ),
-          ],
+    child: Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        const Text('📌', style: TextStyle(fontSize: 48)),
+        const SizedBox(height: 16),
+        Text(
+          'Sin recordatorios todavía',
+          style: Theme.of(
+            context,
+          ).textTheme.titleLarge?.copyWith(color: AppColors.textSecondary),
         ),
-      );
+        const SizedBox(height: 8),
+        Text(
+          'Puedes crear uno incluso sin conexión.',
+          style: Theme.of(
+            context,
+          ).textTheme.bodyMedium?.copyWith(color: AppColors.textMuted),
+        ),
+      ],
+    ),
+  );
 }
 
 class _SyncBanner extends StatelessWidget {
@@ -283,8 +292,8 @@ class _SyncBanner extends StatelessWidget {
     final title = syncing
         ? 'Comprobando conexión'
         : online
-            ? 'En línea · datos sincronizados'
-            : 'Sin conexión · datos locales desactualizados';
+        ? 'En línea · datos sincronizados'
+        : 'Sin conexión · datos locales desactualizados';
     final detail = [
       'Última sincronización: $age',
       if (pending > 0) '$pending pendiente(s)',
@@ -312,20 +321,27 @@ class _SyncBanner extends StatelessWidget {
                 child: CircularProgressIndicator(strokeWidth: 2, color: color),
               )
             else
-              Icon(online ? Icons.cloud_done_outlined : Icons.cloud_off,
-                  color: color),
+              Icon(
+                online ? Icons.cloud_done_outlined : Icons.cloud_off,
+                color: color,
+              ),
             const SizedBox(width: 10),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title,
-                      style:
-                          TextStyle(color: color, fontWeight: FontWeight.w700)),
+                  Text(
+                    title,
+                    style: TextStyle(color: color, fontWeight: FontWeight.w700),
+                  ),
                   const SizedBox(height: 2),
-                  Text(detail,
-                      style: const TextStyle(
-                          color: AppColors.textSecondary, fontSize: 12)),
+                  Text(
+                    detail,
+                    style: const TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 12,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -391,8 +407,9 @@ class _ReminderCard extends StatelessWidget {
                 ? AppColors.textMuted
                 : AppColors.textPrimary,
             fontWeight: FontWeight.w500,
-            decoration:
-                reminder.isCompleted ? TextDecoration.lineThrough : null,
+            decoration: reminder.isCompleted
+                ? TextDecoration.lineThrough
+                : null,
           ),
         ),
         subtitle: Padding(
@@ -413,8 +430,10 @@ class _ReminderCard extends StatelessWidget {
                 children: [
                   Icon(Icons.circle, size: 8, color: syncColor),
                   const SizedBox(width: 5),
-                  Text(syncText,
-                      style: TextStyle(color: syncColor, fontSize: 12)),
+                  Text(
+                    syncText,
+                    style: TextStyle(color: syncColor, fontSize: 12),
+                  ),
                 ],
               ),
             ],
@@ -425,14 +444,18 @@ class _ReminderCard extends StatelessWidget {
           children: [
             if (!reminder.isCompleted)
               IconButton(
-                icon: const Icon(Icons.check_circle_outline_rounded,
-                    color: AppColors.accentGreen),
+                icon: const Icon(
+                  Icons.check_circle_outline_rounded,
+                  color: AppColors.accentGreen,
+                ),
                 onPressed: onComplete,
                 tooltip: 'Completar',
               ),
             IconButton(
-              icon: const Icon(Icons.delete_outline_rounded,
-                  color: AppColors.accentCoral),
+              icon: const Icon(
+                Icons.delete_outline_rounded,
+                color: AppColors.accentCoral,
+              ),
               onPressed: onDelete,
               tooltip: 'Eliminar',
             ),
@@ -443,14 +466,14 @@ class _ReminderCard extends StatelessWidget {
   }
 
   Color _typeColor(ReminderType type) => switch (type) {
-        ReminderType.alarm => AppColors.accentCoral,
-        ReminderType.timer => AppColors.accentTeal,
-        ReminderType.reminder => AppColors.accentGreen,
-      };
+    ReminderType.alarm => AppColors.accentCoral,
+    ReminderType.timer => AppColors.accentTeal,
+    ReminderType.reminder => AppColors.accentGreen,
+  };
 
   String _typeIcon(ReminderType type) => switch (type) {
-        ReminderType.alarm => '⏰',
-        ReminderType.timer => '⏱',
-        ReminderType.reminder => '📌',
-      };
+    ReminderType.alarm => '⏰',
+    ReminderType.timer => '⏱',
+    ReminderType.reminder => '📌',
+  };
 }

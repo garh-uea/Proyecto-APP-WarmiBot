@@ -1,0 +1,6 @@
+# Copie este archivo como key.properties y complete los valores localmente.
+# Nunca confirme key.properties ni el archivo .jks en Git.
+storePassword=REEMPLAZAR
+keyPassword=REEMPLAZAR
+keyAlias=warmibot-release
+storeFile=warmibot-release.jks

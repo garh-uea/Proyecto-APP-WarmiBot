@@ -1,7 +1,13 @@
-import 'dart:convert';
+import 'package:dio/dio.dart';
 
-import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:http/http.dart' as http;
+import '../../core/network/api_client.dart';
+import '../../core/network/api_environment.dart';
+import '../../core/network/api_failure.dart';
+import '../../core/network/secure_token_store.dart';
+import '../../infrastructure/models/backend_models.dart';
+
+export '../../core/network/api_failure.dart' show ApiFailureFamily;
+export '../../infrastructure/models/backend_models.dart';
 
 class BackendHealth {
   final String status;
@@ -17,51 +23,40 @@ class BackendHealth {
   bool get isHealthy => status == 'ok';
 }
 
-class BackendApiException implements Exception {
-  final String message;
-  final int? statusCode;
-  final String? detail;
-  final Map<String, dynamic>? payload;
-
+class BackendApiException extends ApiFailure {
   const BackendApiException(
-    this.message, {
-    this.statusCode,
-    this.detail,
-    this.payload,
-  });
+    String message, {
+    super.statusCode,
+    super.payload,
+    super.fieldErrors,
+    super.family = ApiFailureFamily.validation,
+  }) : super(message: message);
 
-  bool get isUnauthorized => statusCode == 401;
-  bool get isForbidden => statusCode == 403;
-
-  @override
-  String toString() => message;
+  factory BackendApiException.fromFailure(ApiFailure failure) =>
+      BackendApiException(
+        failure.message,
+        statusCode: failure.statusCode,
+        payload: failure.payload,
+        fieldErrors: failure.fieldErrors,
+        family: failure.family,
+      );
 }
 
 class BackendApiService {
   static const defaultBaseUrl = 'http://10.0.2.2:8000';
 
-  final http.Client _client;
-  final bool _ownsClient;
+  final ApiClient _client;
   final Uri baseUri;
-  final Duration timeout;
 
-  BackendApiService({
-    http.Client? client,
-    String? baseUrl,
-    this.timeout = const Duration(seconds: 5),
-  })  : _client = client ?? http.Client(),
-        _ownsClient = client == null,
-        baseUri = _parseBaseUrl(baseUrl ?? _configuredBaseUrl());
-
-  static String _configuredBaseUrl() {
-    try {
-      return dotenv.env['API_BASE_URL']?.trim().isNotEmpty == true
-          ? dotenv.env['API_BASE_URL']!.trim()
-          : defaultBaseUrl;
-    } catch (_) {
-      return defaultBaseUrl;
-    }
-  }
+  BackendApiService({ApiClient? client, String? baseUrl})
+      : baseUri = _parseBaseUrl(baseUrl ?? ApiEnvironment.baseUri.toString()),
+        _client = client ??
+            (baseUrl == null
+                ? ApiClient.instance
+                : ApiClient.forTesting(
+                    dio: Dio(),
+                    baseUrl: _parseBaseUrl(baseUrl).toString(),
+                  ));
 
   static Uri _parseBaseUrl(String value) {
     final normalized = value.trim().replaceFirst(RegExp(r'/$'), '');
@@ -71,37 +66,25 @@ class BackendApiService {
         (uri.scheme != 'http' && uri.scheme != 'https')) {
       throw ArgumentError.value(value, 'baseUrl', 'URL HTTP(S) no válida');
     }
+    if ((ApiEnvironment.isProduction || ApiEnvironment.isReleaseBuild) &&
+        uri.scheme != 'https') {
+      throw ArgumentError.value(value, 'baseUrl', 'Producción exige HTTPS');
+    }
     return uri;
   }
 
   Future<BackendHealth> checkHealth() async {
-    final endpoint = baseUri.replace(path: '${baseUri.path}/health');
-    try {
-      final response = await _client.get(endpoint,
-          headers: const {'Accept': 'application/json'}).timeout(timeout);
-      if (response.statusCode != 200) {
-        throw BackendApiException(
-          'El backend respondió con HTTP ${response.statusCode}.',
-        );
-      }
-
-      final payload = jsonDecode(utf8.decode(response.bodyBytes));
-      if (payload is! Map<String, dynamic> || payload['status'] != 'ok') {
-        throw const BackendApiException(
-          'La respuesta de /health no tiene el formato esperado.',
-        );
-      }
-
-      return BackendHealth(
-        status: payload['status'] as String,
-        environment: payload['environment']?.toString() ?? 'desconocido',
-        endpoint: endpoint,
+    final data = await _get('/health', public: true);
+    if (data['status'] != 'ok') {
+      throw const BackendApiException(
+        'La respuesta de /health no tiene el formato esperado.',
       );
-    } on BackendApiException {
-      rethrow;
-    } catch (error) {
-      throw BackendApiException('No se pudo conectar con $endpoint: $error');
     }
+    return BackendHealth(
+      status: data['status'] as String,
+      environment: data['environment']?.toString() ?? 'desconocido',
+      endpoint: baseUri.replace(path: '${baseUri.path}/health'),
+    );
   }
 
   Future<BackendUser> register({
@@ -109,278 +92,183 @@ class BackendApiService {
     required String displayName,
     required String password,
   }) async {
-    final response = await _send(
-      'POST',
+    final data = await _post(
       '/api/v1/auth/register',
+      public: true,
       body: {
         'email': email.trim(),
         'display_name': displayName.trim(),
         'password': password,
       },
     );
-    return BackendUser.fromJson(_jsonObject(response));
+    return BackendUser.fromJson(data);
   }
 
   Future<AuthTokenPair> login({
     required String email,
     required String password,
   }) async {
-    final endpoint = _endpoint('/api/v1/auth/login');
     try {
-      final response = await _client.post(
-        endpoint,
-        headers: const {
-          'Accept': 'application/json',
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: {'username': email.trim(), 'password': password},
-      ).timeout(timeout);
-      _throwForError(response);
-      return AuthTokenPair.fromJson(_jsonObject(response));
-    } on BackendApiException {
-      rethrow;
-    } catch (error) {
-      throw BackendApiException('No se pudo conectar con $endpoint: $error');
+      final response = await _client.dio.post<dynamic>(
+        '/api/v1/auth/login',
+        data: {'username': email.trim(), 'password': password},
+        options: Options(
+          contentType: Headers.formUrlEncodedContentType,
+          extra: const {
+            skipAuthKey: true,
+            skipRefreshKey: true,
+            skipRetryKey: true,
+          },
+        ),
+      );
+      return AuthTokenPair.fromJson(_map(response.data));
+    } on DioException catch (error) {
+      throw BackendApiException.fromFailure(ApiFailureMapper.fromDio(error));
     }
   }
 
   Future<AuthTokenPair> refresh(String refreshToken) async {
-    final response = await _send(
-      'POST',
+    final data = await _post(
       '/api/v1/auth/refresh',
+      public: true,
+      disableRefresh: true,
       body: {'refresh_token': refreshToken},
     );
-    return AuthTokenPair.fromJson(_jsonObject(response));
+    return AuthTokenPair.fromJson(data);
   }
 
-  Future<BackendUser> currentUser(String accessToken) async {
-    final response = await _send(
-      'GET',
-      '/api/v1/auth/me',
-      accessToken: accessToken,
-    );
-    return BackendUser.fromJson(_jsonObject(response));
-  }
+  Future<BackendUser> currentUser([String? _]) async =>
+      BackendUser.fromJson(await _get('/api/v1/auth/me'));
 
   Future<Map<String, dynamic>> getProtectedObject(
-    String path,
-    String accessToken,
-  ) async {
-    final response = await _send('GET', path, accessToken: accessToken);
-    return _jsonObject(response);
-  }
+    String path, [
+    String? _,
+  ]) =>
+      _get(path);
 
   Future<void> logout({
-    required String accessToken,
+    String? accessToken,
     required String refreshToken,
   }) async {
-    await _send(
-      'POST',
-      '/api/v1/auth/logout',
-      accessToken: accessToken,
-      body: {'refresh_token': refreshToken},
-    );
+    await _post('/api/v1/auth/logout', body: {'refresh_token': refreshToken});
   }
 
-  Future<List<BackendReminder>> listReminders(String accessToken) async {
-    final response = await _send(
-      'GET',
-      '/api/v1/reminders',
-      accessToken: accessToken,
-    );
-    final decoded = jsonDecode(utf8.decode(response.bodyBytes));
-    if (decoded is! List) {
-      throw const BackendApiException(
-        'La API devolvió una lista de recordatorios no válida.',
-      );
+  Future<List<BackendReminder>> listReminders([String? _]) async {
+    try {
+      final response = await _client.dio.get<dynamic>('/api/v1/reminders');
+      final data = response.data;
+      if (data is! List) {
+        throw const BackendApiException(
+          'La API devolvió una lista de recordatorios no válida.',
+        );
+      }
+      return data.map((item) => BackendReminder.fromJson(_map(item))).toList();
+    } on DioException catch (error) {
+      throw BackendApiException.fromFailure(ApiFailureMapper.fromDio(error));
     }
-    return decoded
-        .map((item) => BackendReminder.fromJson(item as Map<String, dynamic>))
-        .toList();
   }
 
   Future<BackendReminder> syncReminder({
-    required String accessToken,
+    String? accessToken,
     required Map<String, dynamic> payload,
   }) async {
-    final response = await _send(
-      'POST',
+    final data = await _post(
       '/api/v1/reminders/sync',
-      accessToken: accessToken,
       body: payload,
+      idempotent: true,
     );
-    return BackendReminder.fromJson(_jsonObject(response));
+    return BackendReminder.fromJson(data);
   }
 
-  Uri _endpoint(String path) => baseUri.replace(
-        path: '${baseUri.path}${path.startsWith('/') ? path : '/$path'}',
+  Future<BackendUser> forceAutomaticRefreshDemo() async {
+    if (!ApiEnvironment.diagnosticsEnabled) {
+      throw const BackendApiException(
+        'La demostración de renovación solo está disponible en desarrollo.',
       );
-
-  Future<http.Response> _send(
-    String method,
-    String path, {
-    String? accessToken,
-    Map<String, dynamic>? body,
-  }) async {
-    final endpoint = _endpoint(path);
-    final headers = <String, String>{
-      'Accept': 'application/json',
-      if (body != null) 'Content-Type': 'application/json',
-      if (accessToken != null) 'Authorization': 'Bearer $accessToken',
-    };
+    }
+    final previous = await _client.tokenStore.read();
+    if (previous == null) {
+      throw const BackendApiException('No existe una sesión para renovar.');
+    }
+    await _client.tokenStore.write(StoredTokens(
+      accessToken: 'access-token-expirado-para-demostracion',
+      refreshToken: previous.refreshToken,
+    ));
     try {
-      late final http.Response response;
-      switch (method) {
-        case 'GET':
-          response =
-              await _client.get(endpoint, headers: headers).timeout(timeout);
-          break;
-        case 'POST':
-          response = await _client
-              .post(
-                endpoint,
-                headers: headers,
-                body: body == null ? null : jsonEncode(body),
-              )
-              .timeout(timeout);
-          break;
-        default:
-          throw ArgumentError.value(method, 'method', 'Método no soportado');
-      }
-      _throwForError(response);
-      return response;
-    } on BackendApiException {
+      return await currentUser();
+    } catch (_) {
+      await _client.tokenStore.write(previous);
       rethrow;
-    } catch (error) {
-      throw BackendApiException('No se pudo conectar con $endpoint: $error');
     }
   }
 
-  static Map<String, dynamic> _jsonObject(http.Response response) {
-    final decoded = jsonDecode(utf8.decode(response.bodyBytes));
-    if (decoded is! Map<String, dynamic>) {
-      throw const BackendApiException('La API devolvió un formato inesperado.');
-    }
-    return decoded;
-  }
-
-  static void _throwForError(http.Response response) {
-    if (response.statusCode >= 200 && response.statusCode < 300) return;
-    String? detail;
-    Map<String, dynamic>? payload;
-    try {
-      final decoded = jsonDecode(utf8.decode(response.bodyBytes));
-      if (decoded is Map<String, dynamic>) {
-        payload = decoded;
-        final rawDetail = decoded['detail'];
-        detail = rawDetail is String
-            ? rawDetail
-            : rawDetail is Map<String, dynamic>
-                ? rawDetail['message']?.toString()
-                : rawDetail?.toString();
-      }
-    } catch (_) {}
-    throw BackendApiException(
-      detail ?? 'El backend respondió con HTTP ${response.statusCode}.',
-      statusCode: response.statusCode,
-      detail: detail,
-      payload: payload,
+  Future<void> forceValidation422Demo() async {
+    await _post(
+      '/api/v1/reminders/sync',
+      body: {
+        'client_id': 'corto',
+        'operation': 'upsert',
+        'text': 'Validación controlada',
+        'scheduled_at': DateTime.now().toUtc().toIso8601String(),
+        'reminder_type': 'reminder',
+        'is_completed': false,
+        'base_version': -1,
+        'client_updated_at': DateTime.now().toUtc().toIso8601String(),
+      },
+      idempotent: true,
     );
+  }
+
+  Future<Map<String, dynamic>> _get(
+    String path, {
+    bool public = false,
+  }) async {
+    try {
+      final response = await _client.dio.get<dynamic>(
+        path,
+        options: Options(extra: {
+          if (public) skipAuthKey: true,
+          if (public) skipRefreshKey: true,
+        }),
+      );
+      return _map(response.data);
+    } on DioException catch (error) {
+      throw BackendApiException.fromFailure(ApiFailureMapper.fromDio(error));
+    }
+  }
+
+  Future<Map<String, dynamic>> _post(
+    String path, {
+    Map<String, dynamic>? body,
+    bool public = false,
+    bool disableRefresh = false,
+    bool idempotent = false,
+  }) async {
+    try {
+      final response = await _client.dio.post<dynamic>(
+        path,
+        data: body,
+        options: Options(extra: {
+          if (public) skipAuthKey: true,
+          if (public || disableRefresh) skipRefreshKey: true,
+          if (!idempotent) skipRetryKey: true,
+          if (idempotent) idempotentKey: true,
+        }),
+      );
+      if (response.statusCode == 204 || response.data == null) return const {};
+      return _map(response.data);
+    } on DioException catch (error) {
+      throw BackendApiException.fromFailure(ApiFailureMapper.fromDio(error));
+    }
+  }
+
+  static Map<String, dynamic> _map(dynamic value) {
+    if (value is Map<String, dynamic>) return value;
+    if (value is Map) return Map<String, dynamic>.from(value);
+    throw const BackendApiException('La API devolvió un formato inesperado.');
   }
 
   void close() {
-    if (_ownsClient) _client.close();
+    // Dio es compartido por toda la aplicación y no se cierra por pantalla.
   }
-}
-
-class BackendReminder {
-  final int id;
-  final String clientId;
-  final String text;
-  final DateTime scheduledAt;
-  final String reminderType;
-  final bool isCompleted;
-  final bool deleted;
-  final int version;
-  final DateTime clientUpdatedAt;
-  final DateTime updatedAt;
-
-  const BackendReminder({
-    required this.id,
-    required this.clientId,
-    required this.text,
-    required this.scheduledAt,
-    required this.reminderType,
-    required this.isCompleted,
-    required this.deleted,
-    required this.version,
-    required this.clientUpdatedAt,
-    required this.updatedAt,
-  });
-
-  factory BackendReminder.fromJson(Map<String, dynamic> json) =>
-      BackendReminder(
-        id: json['id'] as int,
-        clientId: json['client_id'] as String,
-        text: json['text'] as String,
-        scheduledAt: DateTime.parse(json['scheduled_at'] as String),
-        reminderType: json['reminder_type'] as String,
-        isCompleted: json['is_completed'] as bool,
-        deleted: json['deleted'] as bool,
-        version: json['version'] as int,
-        clientUpdatedAt: DateTime.parse(json['client_updated_at'] as String),
-        updatedAt: DateTime.parse(json['updated_at'] as String),
-      );
-}
-
-class BackendUser {
-  final int id;
-  final String email;
-  final String displayName;
-  final String role;
-  final bool isActive;
-
-  const BackendUser({
-    required this.id,
-    required this.email,
-    required this.displayName,
-    required this.role,
-    required this.isActive,
-  });
-
-  bool get isAdmin => role == 'admin';
-
-  Map<String, dynamic> toJson() => {
-        'id': id,
-        'email': email,
-        'display_name': displayName,
-        'role': role,
-        'is_active': isActive,
-      };
-
-  factory BackendUser.fromJson(Map<String, dynamic> json) => BackendUser(
-        id: json['id'] as int,
-        email: json['email'] as String,
-        displayName: json['display_name'] as String,
-        role: json['role'] as String,
-        isActive: json['is_active'] as bool,
-      );
-}
-
-class AuthTokenPair {
-  final String accessToken;
-  final String refreshToken;
-  final int expiresIn;
-
-  const AuthTokenPair({
-    required this.accessToken,
-    required this.refreshToken,
-    required this.expiresIn,
-  });
-
-  factory AuthTokenPair.fromJson(Map<String, dynamic> json) => AuthTokenPair(
-        accessToken: json['access_token'] as String,
-        refreshToken: json['refresh_token'] as String,
-        expiresIn: json['expires_in'] as int,
-      );
 }

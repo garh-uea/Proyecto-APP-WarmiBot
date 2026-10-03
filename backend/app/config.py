@@ -23,6 +23,17 @@ def validate_jwt_secret(app_env: str, jwt_secret: str) -> None:
         )
 
 
+def normalize_database_url(database_url: str) -> str:
+    """Use the psycopg 3 driver for PostgreSQL URLs supplied by hosts."""
+    if database_url.startswith("postgres://"):
+        return database_url.replace("postgres://", "postgresql+psycopg://", 1)
+    if database_url.startswith("postgresql://"):
+        return database_url.replace(
+            "postgresql://", "postgresql+psycopg://", 1
+        )
+    return database_url
+
+
 @dataclass(frozen=True)
 class Settings:
     app_name: str
@@ -47,15 +58,18 @@ def get_settings() -> Settings:
     app_env = os.getenv("APP_ENV", "development")
     jwt_secret = os.getenv("JWT_SECRET", "development-only-change-me")
     validate_jwt_secret(app_env, jwt_secret)
+    default_access_minutes = "15" if app_env.lower() == "production" else "1"
     return Settings(
         app_name=os.getenv("APP_NAME", "WarmiBot API"),
         app_env=app_env,
-        database_url=os.getenv(
-            "DATABASE_URL", "sqlite:///./warmibot_backend.db"
+        database_url=normalize_database_url(
+            os.getenv("DATABASE_URL", "sqlite:///./warmibot_backend.db")
         ),
         jwt_secret=jwt_secret,
         jwt_algorithm="HS256",
-        access_token_minutes=int(os.getenv("ACCESS_TOKEN_MINUTES", "15")),
+        access_token_minutes=int(
+            os.getenv("ACCESS_TOKEN_MINUTES", default_access_minutes)
+        ),
         refresh_token_days=int(os.getenv("REFRESH_TOKEN_DAYS", "7")),
         cache_ttl_seconds=int(os.getenv("CACHE_TTL_SECONDS", "60")),
         allowed_origins=_csv(

@@ -4,10 +4,15 @@
 // ============================================================
 
 import 'dart:convert';
-import 'package:http/http.dart' as http;
+import 'package:dio/dio.dart';
+
+import '../../core/network/api_client.dart';
 
 class TranslationService {
-  TranslationService._();
+  final Dio _client;
+
+  TranslationService._({Dio? client})
+      : _client = client ?? ApiClient.instance.dio;
   static final TranslationService instance = TranslationService._();
 
   Future<String> translate(String text, String targetLang,
@@ -27,9 +32,17 @@ class TranslationService {
     );
 
     try {
-      final response = await http.get(uri).timeout(const Duration(seconds: 10));
+      final response = await _client.getUri<dynamic>(
+        uri,
+        options: Options(extra: const {
+          skipAuthKey: true,
+          skipRefreshKey: true,
+        }),
+      );
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body) as List;
+        final data = response.data is String
+            ? jsonDecode(response.data as String) as List
+            : response.data as List;
         final translations = data[0] as List;
         final result = StringBuffer();
         for (final part in translations) {

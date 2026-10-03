@@ -62,7 +62,7 @@ El flujo de integración es:
 ```text
 WarmiBot en Pixel_4
         |
-        | HTTP de depuración: http://10.0.2.2:800/health
+        | HTTP de depuración: http://10.0.2.2:8000/health
         v
 FastAPI en el equipo anfitrión (0.0.0.0:800)
         |
@@ -121,22 +121,29 @@ El diagnóstico esperado debe terminar con `No issues found!`.
 
 ## 2. Configurar las variables móviles
 
-Copie el archivo de ejemplo:
+La configuración móvil se entrega mediante `--dart-define`; `.env` ya no se
+empaqueta dentro del APK. Para Pixel_4 utilice:
 
 ```powershell
-Copy-Item .env.example .env
+flutter run -d emulator-5554 --debug `
+  --dart-define=APP_ENV=development `
+  --dart-define=API_BASE_URL=http://10.0.2.2:8000
 ```
 
-Para el emulador Pixel_4 mantenga:
+Para un teléfono físico conectado por USB, active **Depuración por USB**, acepte
+la autorización del equipo y compruebe `adb devices -l` y `flutter devices`.
+Inicie el backend en `127.0.0.1:8000` y use el puente local de ADB:
 
-```dotenv
-API_BASE_URL=http://10.0.2.2:800
+```powershell
+adb reverse tcp:8000 tcp:8000
+flutter run -d <ID_DE_ADB> --debug `
+  --dart-define=API_BASE_URL=http://127.0.0.1:8000
 ```
 
-Para un teléfono físico, reemplace la dirección por la IPv4 del equipo en la
-misma red, por ejemplo `http://192.168.1.25:800`, y autorice ese host de manera
-explícita en una configuración de red de depuración. Nunca suba `.env` al
-repositorio.
+La excepción HTTP para `127.0.0.1` existe únicamente en la variante debug.
+Si se prefiere la red Wi-Fi, use la IPv4 del equipo y autorice explícitamente
+ese host en la configuración de depuración. Nunca suba claves al repositorio
+ni las declare como recursos de Flutter.
 
 ## 3. Preparar y ejecutar FastAPI
 
@@ -148,13 +155,13 @@ backend\.venv\Scripts\Activate.ps1
 python -m pip install -r backend\requirements.txt
 Copy-Item backend\.env.example backend\.env
 Set-Location backend
-python -m uvicorn app.main:app --host 0.0.0.0 --port 800 --env-file .env
+python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --env-file .env
 ```
 
 En otra terminal compruebe:
 
 ```powershell
-Invoke-RestMethod http://127.0.0.1:800/health
+Invoke-RestMethod http://127.0.0.1:8000/health
 ```
 
 Respuesta esperada:
@@ -163,7 +170,7 @@ Respuesta esperada:
 {"status":"ok","environment":"development"}
 ```
 
-Swagger queda disponible en `http://127.0.0.1:800/docs`. Consulte
+Swagger queda disponible en `http://127.0.0.1:8000/docs`. Consulte
 `backend/README.md` para autenticación, seguridad, pruebas y producción.
 
 ## 4. Preparar Flutter y Pixel_4
@@ -186,7 +193,9 @@ Android por USB.
 Mantenga el backend activo y ejecute:
 
 ```powershell
-flutter run -d emulator-5554 --debug
+flutter run -d emulator-5554 --debug `
+  --dart-define=APP_ENV=development `
+  --dart-define=API_BASE_URL=http://10.0.2.2:8000
 ```
 
 La parte superior de WarmiBot debe mostrar `API conectada` en color verde. Si el
@@ -206,12 +215,38 @@ estado de la aplicación.
 
 - La variante principal tiene `android:usesCleartextTraffic="false"`.
 - Solo el manifiesto `debug` activa tráfico HTTP.
-- `network_security_config.xml` permite exclusivamente el dominio `10.0.2.2`.
+- `network_security_config.xml` permite `10.0.2.2` para el emulador y
+  `127.0.0.1` para el puente USB de un teléfono físico, solo en debug.
 - Las compilaciones release no heredan esta excepción de desarrollo.
 - En producción se debe usar HTTPS y un secreto JWT aleatorio de 32 caracteres
   o más.
 - El backend impide iniciar en `APP_ENV=production` si `JWT_SECRET` es corto o
   conserva un valor de ejemplo.
+- Dio es la única instancia HTTP de producción. Sus tiempos de conexión, envío
+  y recepción son 5, 8 y 8 segundos.
+- Los interceptores se registran en este orden: autenticación, renovación
+  automática, reintento idempotente y registro seguro solo en desarrollo.
+- El interceptor de autenticación lee el access token de Secure Storage. Ante
+  un 401, el siguiente interceptor rota el refresh token, marca la solicitud y
+  la reenvía una sola vez para impedir bucles.
+- Los POST solo se reintentan cuando están marcados como idempotentes y llevan
+  un `client_id`; las demás creaciones no se repiten automáticamente.
+- Una compilación release o un ambiente `production` rechaza una URL base HTTP.
+
+## Capacidades del dispositivo
+
+WarmiBot usa micrófono para comandos de voz y notificaciones locales para
+recordatorios y temporizadores. Ambas capacidades son opcionales. El permiso
+se consulta en el momento de uso con una explicación previa; si se deniega el
+micrófono, se puede escribir, y si se deniega la notificación, el recordatorio
+se guarda en SQLite y continúa su sincronización. Una denegación permanente
+ofrece abrir los Ajustes de la aplicación. Android declara solo
+`RECORD_AUDIO` y `POST_NOTIFICATIONS` para estas funciones; iOS contiene las
+cadenas `NSMicrophoneUsageDescription` y `NSSpeechRecognitionUsageDescription`.
+
+El guion, el informe breve y las capturas tomadas del teléfono físico ALT LX2
+están en `docs/Guion_Informe_Capacidades_Nativas_WarmiBot.docx` y
+`docs/evidencias/capacidades_dispositivo/`.
 
 ## Pruebas y calidad
 
@@ -249,9 +284,9 @@ a abrirlo.
 
 ### La app muestra “API sin conexión”
 
-1. Confirme que Uvicorn escucha en `0.0.0.0:800`.
-2. Abra `http://127.0.0.1:800/health` en el equipo.
-3. Verifique `API_BASE_URL=http://10.0.2.2:800`.
+1. Confirme que Uvicorn escucha en `0.0.0.0:8000`.
+2. Abra `http://127.0.0.1:8000/health` en el equipo.
+3. Verifique `API_BASE_URL=http://10.0.2.2:8000`.
 4. Toque el indicador de la app para reintentar.
 5. Consulte el firewall únicamente si el endpoint local funciona pero el
    emulador no registra ninguna solicitud.

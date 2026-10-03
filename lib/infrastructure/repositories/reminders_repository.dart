@@ -2,11 +2,12 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 
-import 'package:path/path.dart' as p;
 import 'package:sqflite/sqflite.dart';
 
 import '../../domain/models/reminder.dart';
 import '../../domain/services/backend_api_service.dart';
+import '../data_sources/reminders_local_data_source.dart';
+import '../data_sources/reminders_remote_data_source.dart';
 
 class ReminderSyncSnapshot {
   final bool online;
@@ -29,131 +30,28 @@ class ReminderSyncSnapshot {
 }
 
 class RemindersRepository {
-  RemindersRepository._({BackendApiService? api})
-      : _api = api ?? BackendApiService();
+  RemindersRepository._({
+    RemindersRemoteDataSource? remote,
+    RemindersLocalDataSource? local,
+  })  : _remote = remote ?? ApiRemindersRemoteDataSource(),
+        _local = local ?? RemindersLocalDataSource();
 
   static final RemindersRepository instance = RemindersRepository._();
-  static const databaseVersion = 2;
+  static const databaseVersion = RemindersLocalDataSource.databaseVersion;
   static const maxSyncAttempts = 5;
 
-  final BackendApiService _api;
+  final RemindersRemoteDataSource _remote;
+  final RemindersLocalDataSource _local;
   final Random _random = Random.secure();
   final StreamController<ReminderSyncSnapshot> _syncController =
       StreamController<ReminderSyncSnapshot>.broadcast();
 
-  Database? _db;
   bool _online = true;
   bool _syncing = false;
   String? _lastMessage;
   bool _authenticationRequired = false;
 
   Stream<ReminderSyncSnapshot> get syncChanges => _syncController.stream;
-
-  Future<String> get _databasePath async =>
-      p.join(await getDatabasesPath(), 'warmibot.db');
-
-  Future<Database> get _database async {
-    if (_db != null) return _db!;
-    _db = await openDatabase(
-      await _databasePath,
-      version: databaseVersion,
-      onConfigure: (db) => db.execute('PRAGMA foreign_keys = ON'),
-      onCreate: (db, version) => _createSchema(db),
-      onUpgrade: _migrate,
-    );
-    return _db!;
-  }
-
-  Future<void> _createSchema(Database db) async {
-    await db.execute('''
-      CREATE TABLE reminders (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        client_id TEXT NOT NULL UNIQUE,
-        server_id INTEGER,
-        server_version INTEGER NOT NULL DEFAULT 0,
-        text TEXT NOT NULL,
-        scheduled_at TEXT NOT NULL,
-        type INTEGER NOT NULL DEFAULT 0,
-        is_completed INTEGER NOT NULL DEFAULT 0,
-        updated_at TEXT NOT NULL,
-        last_synced_at TEXT,
-        sync_status TEXT NOT NULL DEFAULT 'pending',
-        is_deleted INTEGER NOT NULL DEFAULT 0
-      )
-    ''');
-    await _createAuxiliaryTables(db);
-  }
-
-  Future<void> _createAuxiliaryTables(Database db) async {
-    await db.execute('''
-      CREATE TABLE IF NOT EXISTS pending_operations (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        client_id TEXT NOT NULL UNIQUE,
-        entity_type TEXT NOT NULL,
-        operation_type TEXT NOT NULL,
-        payload_json TEXT NOT NULL,
-        attempts INTEGER NOT NULL DEFAULT 0,
-        next_retry_at TEXT NOT NULL,
-        created_at TEXT NOT NULL,
-        last_error TEXT
-      )
-    ''');
-    await db.execute('''
-      CREATE TABLE IF NOT EXISTS local_metadata (
-        metadata_key TEXT PRIMARY KEY,
-        metadata_value TEXT NOT NULL
-      )
-    ''');
-    await db.execute('''
-      CREATE INDEX IF NOT EXISTS idx_pending_retry
-      ON pending_operations(attempts, next_retry_at)
-    ''');
-  }
-
-  Future<void> _migrate(Database db, int oldVersion, int newVersion) async {
-    if (oldVersion >= 2) return;
-    await db.execute(
-      "ALTER TABLE reminders ADD COLUMN client_id TEXT NOT NULL DEFAULT ''",
-    );
-    await db.execute('ALTER TABLE reminders ADD COLUMN server_id INTEGER');
-    await db.execute(
-      'ALTER TABLE reminders ADD COLUMN server_version INTEGER NOT NULL DEFAULT 0',
-    );
-    await db.execute(
-      "ALTER TABLE reminders ADD COLUMN updated_at TEXT NOT NULL DEFAULT ''",
-    );
-    await db.execute('ALTER TABLE reminders ADD COLUMN last_synced_at TEXT');
-    await db.execute(
-      "ALTER TABLE reminders ADD COLUMN sync_status TEXT NOT NULL DEFAULT 'pending'",
-    );
-    await db.execute(
-      'ALTER TABLE reminders ADD COLUMN is_deleted INTEGER NOT NULL DEFAULT 0',
-    );
-
-    final rows = await db.query('reminders', columns: ['id', 'scheduled_at']);
-    for (final row in rows) {
-      final id = row['id'] as int;
-      await db.update(
-        'reminders',
-        {
-          'client_id': 'legacy-$id-${DateTime.now().microsecondsSinceEpoch}',
-          'updated_at': row['scheduled_at'] as String,
-        },
-        where: 'id = ?',
-        whereArgs: [id],
-      );
-    }
-    await db.execute('''
-      CREATE UNIQUE INDEX IF NOT EXISTS idx_reminders_client_id
-      ON reminders(client_id)
-    ''');
-    await _createAuxiliaryTables(db);
-
-    final migrated = await db.query('reminders');
-    for (final row in migrated) {
-      await _enqueue(db, Reminder.fromMap(row), 'upsert');
-    }
-  }
 
   String _newClientId() {
     final now = DateTime.now().toUtc().microsecondsSinceEpoch;
@@ -162,28 +60,15 @@ class RemindersRepository {
   }
 
   Future<List<Reminder>> getAll() async {
-    final db = await _database;
-    final maps = await db.query(
-      'reminders',
-      where: 'is_deleted = 0',
-      orderBy: 'scheduled_at ASC',
-    );
-    return maps.map(Reminder.fromMap).toList();
+    return _local.getAll();
   }
 
   Future<List<Reminder>> getPending() async {
-    final db = await _database;
-    final maps = await db.query(
-      'reminders',
-      where: 'is_completed = 0 AND is_deleted = 0 AND scheduled_at > ?',
-      whereArgs: [DateTime.now().toIso8601String()],
-      orderBy: 'scheduled_at ASC',
-    );
-    return maps.map(Reminder.fromMap).toList();
+    return _local.getPending();
   }
 
   Future<Reminder> insert(Reminder reminder) async {
-    final db = await _database;
+    final db = await _local.database;
     final local = reminder.copyWith(
       clientId: reminder.clientId.isEmpty ? _newClientId() : reminder.clientId,
       updatedAt: DateTime.now().toUtc(),
@@ -225,7 +110,7 @@ class RemindersRepository {
   }
 
   Future<void> deleteCompleted() async {
-    final db = await _database;
+    final db = await _local.database;
     final rows = await db.query(
       'reminders',
       where: 'is_completed = 1 AND is_deleted = 0',
@@ -236,16 +121,14 @@ class RemindersRepository {
   }
 
   Future<Reminder?> _findById(int id) async {
-    final db = await _database;
-    final rows = await db.query('reminders', where: 'id = ?', whereArgs: [id]);
-    return rows.isEmpty ? null : Reminder.fromMap(rows.first);
+    return _local.findById(id);
   }
 
   Future<void> _savePending(
     Reminder reminder, {
     required String operation,
   }) async {
-    final db = await _database;
+    final db = await _local.database;
     await db.transaction((txn) async {
       await txn.update(
         'reminders',
@@ -301,7 +184,7 @@ class RemindersRepository {
     if (_syncing) return snapshot();
     _syncing = true;
     await _publishSnapshot();
-    final db = await _database;
+    final db = await _local.database;
     var sent = 0;
     var conflicts = 0;
     try {
@@ -317,7 +200,7 @@ class RemindersRepository {
       // Si la cola agotó sus intentos mientras no había red, una consulta
       // liviana detecta la recuperación y habilita un nuevo ciclo completo.
       if (!_online || _authenticationRequired || wasOffline) {
-        await _api.listReminders(accessToken);
+        await _remote.listReminders();
         final now = DateTime.now().toUtc().toIso8601String();
         await db.update(
           'pending_operations',
@@ -351,10 +234,7 @@ class RemindersRepository {
         final payload = jsonDecode(operation['payload_json'] as String)
             as Map<String, dynamic>;
         try {
-          final remote = await _api.syncReminder(
-            accessToken: accessToken,
-            payload: payload,
-          );
+          final remote = await _remote.synchronize(payload);
           await db.transaction((txn) async {
             await _applyRemote(txn, remote);
             await txn.delete(
@@ -383,7 +263,7 @@ class RemindersRepository {
         }
       }
 
-      final remoteItems = await _api.listReminders(accessToken);
+      final remoteItems = await _remote.listReminders();
       await db.transaction((txn) async {
         for (final remote in remoteItems) {
           final local = await txn.query(
@@ -515,7 +395,7 @@ class RemindersRepository {
   }
 
   Future<ReminderSyncSnapshot> snapshot() async {
-    final db = await _database;
+    final db = await _local.database;
     final pendingResult = await db.rawQuery(
       'SELECT COUNT(*) AS total FROM pending_operations WHERE attempts < ?',
       [maxSyncAttempts],
@@ -549,10 +429,7 @@ class RemindersRepository {
   }
 
   Future<void> clearAllLocalData() async {
-    final database = _db;
-    _db = null;
-    if (database != null && database.isOpen) await database.close();
-    await deleteDatabase(await _databasePath);
+    await _local.clearAll();
     _online = true;
     _syncing = false;
     _lastMessage = null;

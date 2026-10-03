@@ -8,8 +8,9 @@
 .flutter-plugins-dependencies
 .packages
 build/
-*.g.dart
-*.freezed.dart
+dist/*.apk
+# El código generado de modelos JSON se versiona para que el proyecto compile
+# inmediatamente después de clonar. Los artefactos de build siguen ignorados.
 
 # Android
 android/.gradle/
@@ -18,6 +19,8 @@ android/captures/
 android/key.properties
 *.jks
 *.keystore
+.gradle-user/
+.jtmp/
 
 # iOS
 ios/Pods/

@@ -4,10 +4,14 @@
 // ============================================================
 
 import 'dart:convert';
-import 'package:http/http.dart' as http;
+import 'package:dio/dio.dart';
+
+import '../../core/network/api_client.dart';
 
 class SearchService {
-  SearchService._();
+  final Dio _client;
+
+  SearchService._({Dio? client}) : _client = client ?? ApiClient.instance.dio;
   static final SearchService instance = SearchService._();
 
   // ── Wikipedia ────────────────────────────────────────────────────────────────
@@ -22,13 +26,20 @@ class SearchService {
       'format': 'json',
     });
 
-    final searchResp =
-        await http.get(searchUri).timeout(const Duration(seconds: 8));
+    final searchResp = await _client.getUri<dynamic>(
+      searchUri,
+      options: Options(extra: const {
+        skipAuthKey: true,
+        skipRefreshKey: true,
+      }),
+    );
     if (searchResp.statusCode != 200) {
       return await _searchDuckDuckGo(query);
     }
 
-    final searchData = jsonDecode(searchResp.body) as List;
+    final searchData = searchResp.data is String
+        ? jsonDecode(searchResp.data as String) as List
+        : searchResp.data as List;
     final titles = searchData[1] as List;
     if (titles.isEmpty) {
       return await _searchDuckDuckGo(query);
@@ -48,13 +59,20 @@ class SearchService {
       'format': 'json',
     });
 
-    final extractResp =
-        await http.get(extractUri).timeout(const Duration(seconds: 8));
+    final extractResp = await _client.getUri<dynamic>(
+      extractUri,
+      options: Options(extra: const {
+        skipAuthKey: true,
+        skipRefreshKey: true,
+      }),
+    );
     if (extractResp.statusCode != 200) {
       return await _searchDuckDuckGo(query);
     }
 
-    final data = jsonDecode(extractResp.body) as Map<String, dynamic>;
+    final data = extractResp.data is String
+        ? jsonDecode(extractResp.data as String) as Map<String, dynamic>
+        : Map<String, dynamic>.from(extractResp.data as Map);
     final pages = (data['query']['pages'] as Map<String, dynamic>);
     final page = pages.values.first as Map<String, dynamic>;
     final extract = (page['extract'] as String? ?? '').trim();
@@ -80,9 +98,17 @@ class SearchService {
     );
 
     try {
-      final resp = await http.get(uri).timeout(const Duration(seconds: 8));
+      final resp = await _client.getUri<dynamic>(
+        uri,
+        options: Options(extra: const {
+          skipAuthKey: true,
+          skipRefreshKey: true,
+        }),
+      );
       if (resp.statusCode == 200) {
-        final data = jsonDecode(resp.body) as Map<String, dynamic>;
+        final data = resp.data is String
+            ? jsonDecode(resp.data as String) as Map<String, dynamic>
+            : Map<String, dynamic>.from(resp.data as Map);
         final abstract_ = (data['AbstractText'] as String? ?? '').trim();
         if (abstract_.isNotEmpty) return abstract_;
         final answer = (data['Answer'] as String? ?? '').trim();

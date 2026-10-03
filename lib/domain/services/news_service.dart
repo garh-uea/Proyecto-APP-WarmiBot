@@ -3,9 +3,11 @@
 // Equivalente a: noticias_bbc() en Python con requests + regex
 // ============================================================
 
-import 'package:http/http.dart' as http;
+import 'package:dio/dio.dart';
 import 'package:xml/xml.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
+
+import '../../core/network/api_client.dart';
+import '../../core/network/api_environment.dart';
 
 class NewsItem {
   final String title;
@@ -22,22 +24,28 @@ class NewsItem {
 }
 
 class NewsService {
-  NewsService._();
+  final Dio _client;
+
+  NewsService._({Dio? client}) : _client = client ?? ApiClient.instance.dio;
   static final NewsService instance = NewsService._();
 
   Future<List<NewsItem>> fetchNews({int maxItems = 5}) async {
-    final url =
-        dotenv.env['NEWS_RSS_URL'] ?? 'https://feeds.bbci.co.uk/mundo/rss.xml';
+    final url = ApiEnvironment.newsRssUrl;
 
-    final response =
-        await http.get(Uri.parse(url)).timeout(const Duration(seconds: 10));
+    final response = await _client.get<String>(
+      url,
+      options: Options(extra: const {
+        skipAuthKey: true,
+        skipRefreshKey: true,
+      }),
+    );
 
     if (response.statusCode != 200) {
       throw Exception(
           'No pude obtener las noticias (error ${response.statusCode})');
     }
 
-    final document = XmlDocument.parse(response.body);
+    final document = XmlDocument.parse(response.data ?? '');
     final items = document.findAllElements('item').take(maxItems);
 
     return items.map((item) {

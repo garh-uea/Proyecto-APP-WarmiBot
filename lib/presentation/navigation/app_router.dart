@@ -72,10 +72,10 @@ GoRouter createAppRouter(AuthCubit authCubit) {
       return null;
     },
     routes: [
-      GoRoute(path: '/', redirect: (_, __) => AppRoutes.home),
+      GoRoute(path: '/', redirect: (_, _) => AppRoutes.home),
       GoRoute(
         path: AppRoutes.loading,
-        builder: (_, __) => const SessionLoadingPage(),
+        builder: (_, _) => const SessionLoadingPage(),
       ),
       GoRoute(
         path: AppRoutes.login,
@@ -85,15 +85,15 @@ GoRouter createAppRouter(AuthCubit authCubit) {
       ),
       GoRoute(
         path: AppRoutes.register,
-        builder: (_, __) => const RegisterPage(),
+        builder: (_, _) => const RegisterPage(),
       ),
       GoRoute(
         path: AppRoutes.apiStatus,
-        builder: (_, __) => const ApiStatusPage(),
+        builder: (_, _) => const ApiStatusPage(),
       ),
       GoRoute(
         path: AppRoutes.forbidden,
-        builder: (_, __) => const ForbiddenPage(),
+        builder: (_, _) => const ForbiddenPage(),
       ),
       ShellRoute(
         builder: (context, state, child) => MainShell(
@@ -103,11 +103,11 @@ GoRouter createAppRouter(AuthCubit authCubit) {
         routes: [
           GoRoute(
             path: AppRoutes.home,
-            builder: (_, __) => const HomePage(),
+            builder: (_, _) => const HomePage(),
           ),
           GoRoute(
             path: AppRoutes.conversations,
-            builder: (_, __) => const ConversationsPage(),
+            builder: (_, _) => const ConversationsPage(),
             routes: [
               GoRoute(
                 path: ':conversationId',
@@ -122,11 +122,11 @@ GoRouter createAppRouter(AuthCubit authCubit) {
           ),
           GoRoute(
             path: AppRoutes.reminders,
-            builder: (_, __) => const RemindersPage(),
+            builder: (_, _) => const RemindersPage(),
           ),
           GoRoute(
             path: AppRoutes.profile,
-            builder: (_, __) => const ProfilePage(),
+            builder: (_, _) => const ProfilePage(),
           ),
           GoRoute(
             path: '/trabajos/:jobId',
@@ -138,7 +138,7 @@ GoRouter createAppRouter(AuthCubit authCubit) {
           ),
           GoRoute(
             path: AppRoutes.diagnostics,
-            builder: (_, __) => const ProtectedResourcePage(
+            builder: (_, _) => const ProtectedResourcePage(
               title: 'Diagnóstico administrativo',
               endpoint: '/api/v1/diagnostics/cache',
               resourceId: 'cache',

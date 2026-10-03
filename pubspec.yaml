@@ -1,10 +1,10 @@
 name: warmibot
 description: WarmiBot - Asistente Virtual con identidad amazónica. Flutter 3.44+
 publish_to: none
-version: 1.0.0+1
+version: 1.0.0+2
 
 environment:
-  sdk: ">=3.2.0 <4.0.0"
+  sdk: ">=3.8.0 <4.0.0"
 
 dependencies:
   flutter:
@@ -25,7 +25,8 @@ dependencies:
   timezone: ^0.11.0
 
   # ── HTTP / APIs ───────────────────────────────────────────────────────────────
-  http: ^1.2.1
+  dio: ^5.9.0
+  json_annotation: ^4.12.0
   xml: ^7.0.1
 
   # ── Base de datos local (Recordatorios) ──────────────────────────────────────
@@ -39,7 +40,6 @@ dependencies:
   intl: ^0.20.2
   shared_preferences: ^2.2.3
   flutter_secure_storage: ^11.0.0
-  flutter_dotenv: ^6.0.1
   url_launcher: ^6.3.0
   share_plus: ^13.1.0
   string_similarity: ^2.0.0
@@ -53,6 +53,8 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
+  build_runner: ^2.4.15
+  json_serializable: ^6.9.5
 
 flutter:
   uses-material-design: true
@@ -60,7 +62,6 @@ flutter:
   assets:
     - assets/images/
     - assets/animations/
-    - .env
 
   # Fuentes opcionales (agregar archivos .ttf manualmente)
   # fonts:

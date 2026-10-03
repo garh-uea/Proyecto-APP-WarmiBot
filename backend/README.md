@@ -12,12 +12,12 @@ python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install -r requirements.txt
 Copy-Item .env.example .env
-python -m uvicorn app.main:app --host 0.0.0.0 --port 800 --env-file .env
+python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --env-file .env
 ```
 
-- Salud: `http://127.0.0.1:800/health`
-- Swagger: `http://127.0.0.1:800/docs`
-- OpenAPI: `http://127.0.0.1:800/openapi.json`
+- Salud: `http://127.0.0.1:8000/health`
+- Swagger: `http://127.0.0.1:8000/docs`
+- OpenAPI: `http://127.0.0.1:8000/openapi.json`
 
 ## Variables
 
@@ -47,7 +47,7 @@ caracteres o conserva un valor inseguro conocido.
 - `/api/v1/diagnostics`: métricas disponibles fuera de producción.
 
 Importe `postman/WarmiBot_Backend.postman_collection.json` para pruebas
-manuales. Su variable `baseUrl` apunta a `http://127.0.0.1:800`.
+manuales. Su variable `baseUrl` apunta a `http://127.0.0.1:8000`.
 
 ## Pruebas
 
@@ -63,7 +63,7 @@ conversaciones, caché, carga eficiente y seguridad del secreto de producción.
 Con el servidor activo:
 
 ```powershell
-.\.venv\Scripts\python.exe scripts\benchmark.py --base-url http://127.0.0.1:800
+.\.venv\Scripts\python.exe scripts\benchmark.py --base-url http://127.0.0.1:8000
 ```
 
 Los resultados dependen del equipo y no deben presentarse como equivalentes a
@@ -81,5 +81,5 @@ Para producción:
 6. Publique detrás de un proxy HTTPS.
 7. Ejecute migraciones controladas antes de escalar réplicas.
 
-El endpoint móvil de desarrollo usa `10.0.2.2:800` solo porque Android Emulator
+El endpoint móvil de desarrollo usa `10.0.2.2:8000` solo porque Android Emulator
 traduce esa dirección al host. No es una dirección de producción.

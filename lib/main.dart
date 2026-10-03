@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
 import 'core/theme/app_theme.dart';
@@ -23,11 +22,6 @@ Future<void> main() async {
     statusBarColor: Colors.transparent,
     statusBarIconBrightness: Brightness.light,
   ));
-  try {
-    await dotenv.load(fileName: '.env');
-  } catch (_) {
-    debugPrint('WarmiBot inició sin .env; se usarán valores de respaldo.');
-  }
   await initializeDateFormatting('es', null);
   runApp(const WarmiBotApp());
 }
