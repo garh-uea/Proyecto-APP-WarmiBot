@@ -63,6 +63,7 @@ class AssistantBloc extends Bloc<AssistantEvent, AssistantState> {
     on<SpeechRecognitionFailed>(_onSpeechRecognitionFailed);
     on<SpeechListeningEnded>(_onSpeechListeningEnded);
     on<ClearChat>(_onClearChat);
+    on<ShowHomeMenu>(_onShowHomeMenu);
   }
 
   // ── Init ──────────────────────────────────────────────────────────────────
@@ -98,6 +99,7 @@ class AssistantBloc extends Bloc<AssistantEvent, AssistantState> {
       state.copyWith(
         messages: [ChatMessage.bot(welcome)],
         avatarState: AvatarState.idle,
+        showHomeMenu: true,
       ),
     );
     try {
@@ -125,6 +127,7 @@ class AssistantBloc extends Bloc<AssistantEvent, AssistantState> {
         messages: [...state.messages, userMsg, loading],
         avatarState: AvatarState.thinking,
         isProcessing: true,
+        showHomeMenu: false,
       ),
     );
 
@@ -210,7 +213,36 @@ class AssistantBloc extends Bloc<AssistantEvent, AssistantState> {
     ClearChat event,
     Emitter<AssistantState> emit,
   ) async {
-    emit(state.copyWith(messages: [], avatarState: AvatarState.idle));
+    emit(
+      state.copyWith(
+        messages: const [],
+        avatarState: AvatarState.idle,
+        isProcessing: false,
+        soundLevel: 0,
+        showHomeMenu: true,
+      ),
+    );
+    try {
+      await _tts.stop();
+    } catch (_) {}
+  }
+
+  Future<void> _onShowHomeMenu(
+    ShowHomeMenu event,
+    Emitter<AssistantState> emit,
+  ) async {
+    emit(
+      state.copyWith(
+        avatarState: AvatarState.idle,
+        isProcessing: false,
+        soundLevel: 0,
+        showHomeMenu: true,
+      ),
+    );
+    try {
+      await _tts.stop();
+      await _stt.stop();
+    } catch (_) {}
   }
 
   // ── Motor de inferencia de comandos ──────────────────────────────────────
@@ -250,30 +282,28 @@ class AssistantBloc extends Bloc<AssistantEvent, AssistantState> {
 
         // ── Buscar Wikipedia ──────────────────────────────────────────────
         case CommandType.buscar:
-          String query = text;
-          for (final word in [
-            'busca',
-            'buscar',
-            'que es',
-            'dime sobre',
-            'informacion sobre',
-            'quien es',
-          ]) {
-            query = query.replaceAll(word, '');
+          final query = CommandParser.extractSearchQuery(rawText);
+          if (query.isEmpty) {
+            return 'Para buscar, escribe o di: “Busca” seguido del tema. '
+                'Ejemplo: “Busca información sobre la Amazonía ecuatoriana”.';
           }
-          query = query.trim();
-          if (query.isEmpty) return 'Dime qué quieres que busque.';
           final result = await _search.searchWikipedia(query);
-          return result;
+          return 'Resultado para “$query”:\n$result';
 
         // ── Traducir ──────────────────────────────────────────────────────
         case CommandType.traducir:
-          final langEntry = CommandParser.extractLanguage(text);
+          final langEntry = CommandParser.extractLanguage(rawText);
           if (langEntry == null) {
-            return 'Dime el idioma al que quieres traducir. Por ejemplo: "traduce buenos días al inglés".';
+            return 'Para traducir, escribe o di: “Traduce [frase] al '
+                '[idioma]”. Ejemplo: “Traduce buenos días al inglés”. '
+                'Puedes usar inglés, francés, italiano, alemán, portugués, '
+                'chino, japonés o español.';
           }
-          final phrase = CommandParser.extractPhraseToTranslate(text);
-          if (phrase.isEmpty) return 'Dime la frase que quieres traducir.';
+          final phrase = CommandParser.extractPhraseToTranslate(rawText);
+          if (phrase.isEmpty) {
+            return 'Falta la frase. Usa, por ejemplo: '
+                '“Traduce buenos días al inglés”.';
+          }
           final translated = await _translation.translate(
             phrase,
             langEntry.value,

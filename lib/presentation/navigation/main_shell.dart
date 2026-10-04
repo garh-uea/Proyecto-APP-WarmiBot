@@ -46,7 +46,12 @@ class MainShell extends StatelessWidget {
       ),
       bottomNavigationBar: WarmiBottomNav(
         currentIndex: _currentIndex,
-        onTap: (index) => context.go(destinations[index]),
+        onTap: (index) {
+          if (index == 0) {
+            context.read<AssistantBloc>().add(const ShowHomeMenu());
+          }
+          context.go(destinations[index]);
+        },
       ),
     );
   }
@@ -151,6 +156,9 @@ class _WarmiDrawer extends StatelessWidget {
       title: Text(label),
       onTap: () {
         Navigator.pop(context);
+        if (route == '/inicio') {
+          context.read<AssistantBloc>().add(const ShowHomeMenu());
+        }
         context.go(route);
       },
     );

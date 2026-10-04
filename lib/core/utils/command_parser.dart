@@ -58,7 +58,9 @@ class CommandParser {
 
     // 1. Eliminar el nombre del asistente al inicio
     final cleanText = text.replaceFirst(
-        RegExp(r'^(warmibot|warmi)\s*', caseSensitive: false), '');
+      RegExp(r'^(warmibot|warmi)\s*', caseSensitive: false),
+      '',
+    );
 
     // 2. Búsqueda exacta por subcadena (más rápida)
     for (final entry in Commands.variants.entries) {
@@ -120,39 +122,89 @@ class CommandParser {
         .replaceAll(RegExp(r'\s+'), ' ')
         .trim();
 
-    const ignoredValues = {
-      '',
-      'clima',
-      'tiempo',
-      'temperatura',
-      'actual',
-    };
+    const ignoredValues = {'', 'clima', 'tiempo', 'temperatura', 'actual'};
     return ignoredValues.contains(city) ? fallback : city;
   }
 
   /// Extrae idioma destino del texto de traducción
   static MapEntry<String, String>? extractLanguage(String text) {
+    final normalized = normalize(text);
     for (final entry in AppConstants.languages.entries) {
-      if (text.contains(entry.key)) {
+      if (normalized.contains(normalize(entry.key))) {
         return entry;
       }
     }
     return null;
   }
 
-  /// Limpia frase para traducción (quita verbos de comando e idioma)
+  /// Limpia la frase sin perder tildes, signos ni mayúsculas. Admite tanto
+  /// "traduce buenos días al inglés" como "traduce al inglés buenos días".
   static String extractPhraseToTranslate(String text) {
-    String phrase = text;
-    for (final p in ['traduce', 'traducir', 'como se dice']) {
-      phrase = phrase.replaceAll(p, '');
+    var phrase = text.trim();
+    phrase = phrase.replaceFirst(
+      RegExp(
+        r'^(?:warmibot|warmi)?\s*[,;:\-]?\s*(?:trad[uú]ce(?:me)?|traducir|c[oó]mo se dice|pasa)\s*',
+        caseSensitive: false,
+      ),
+      '',
+    );
+
+    final languageNames = AppConstants.languages.keys
+        .map(RegExp.escape)
+        .toSet()
+        .join('|');
+    final atStart = RegExp(
+      '^(?:al?|en)\\s+(?:$languageNames)\\s*[:,;-]?\\s*',
+      caseSensitive: false,
+    );
+    final atEnd = RegExp(
+      '\\s+(?:al?|en)\\s+(?:$languageNames)\\s*[?.!]*\$',
+      caseSensitive: false,
+    );
+    phrase = phrase.replaceFirst(atStart, '').replaceFirst(atEnd, '').trim();
+    return phrase.replaceAll(RegExp(r'^[,:;\-\s]+|[,:;\-\s]+$'), '');
+  }
+
+  /// Extrae una consulta conservando las tildes y eliminando solo el prefijo
+  /// de intención. No borra palabras coincidentes dentro del tema buscado.
+  static String extractSearchQuery(String text) {
+    var query = text.trim();
+    query = query.replaceFirst(
+      RegExp(r'^(?:warmibot|warmi)?\s*[,;:\-]?\s*', caseSensitive: false),
+      '',
+    );
+    query = query.replaceFirst(RegExp(r'^[¿¡?!.:,;\-\s]+'), '');
+    const prefixes = [
+      r'b[uú]sca(?:me)?',
+      r'buscar',
+      r'investiga',
+      r'consulta',
+      r'averigua',
+      r'qu[eé]\s+es',
+      r'qu[eé]\s+significa',
+      r'qui[eé]n\s+es',
+      r'd[oó]nde\s+est[aá]',
+      r'dime\s+sobre',
+      r'dime\s+qu[eé]\s+sabes\s+de',
+      r'informaci[oó]n\s+sobre',
+      r'inf[oó]rmame\s+sobre',
+      r'quiero\s+saber(?:\s+sobre)?',
+      r'h[aá]blame\s+de',
+    ];
+    for (final prefix in prefixes) {
+      final pattern = RegExp('^(?:$prefix)\\s*', caseSensitive: false);
+      if (pattern.hasMatch(query)) {
+        query = query.replaceFirst(pattern, '');
+        break;
+      }
     }
-    for (final lang in AppConstants.languages.keys) {
-      phrase = phrase
-          .replaceAll('al $lang', '')
-          .replaceAll('en $lang', '')
-          .replaceAll(lang, '');
-    }
-    return phrase.trim();
+    return query
+        .replaceFirst(
+          RegExp(r'\s+por\s+favor\s*[?.!]*$', caseSensitive: false),
+          '',
+        )
+        .replaceAll(RegExp(r'^[,:;\-\s]+|[?.!,:;\-\s]+$'), '')
+        .trim();
   }
 
   /// Extrae fecha de nacimiento del texto para cálculo de edad

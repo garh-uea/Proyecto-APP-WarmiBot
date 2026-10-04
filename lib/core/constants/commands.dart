@@ -41,11 +41,21 @@ class Commands {
     CommandType.musica: ['reproduce', 'pon musica', 'toca', 'quiero escuchar'],
     CommandType.buscar: [
       'busca',
+      'buscame',
       'buscar',
+      'investiga',
+      'consulta',
+      'averigua',
       'que es',
+      'que significa',
       'dime sobre',
+      'dime que sabes de',
       'informacion sobre',
-      'quien es'
+      'quiero saber',
+      'hablame de',
+      'informame sobre',
+      'quien es',
+      'donde esta',
     ],
     CommandType.clima: [
       'clima',
@@ -99,9 +109,10 @@ class Commands {
     CommandType.traducir: [
       'traduce',
       'traducir',
+      'traduceme',
       'como se dice',
-      'en ingles',
-      'en frances'
+      'pasa al',
+      'pasa a',
     ],
     CommandType.noticias: [
       'noticias',
@@ -131,7 +142,7 @@ class Commands {
     QuickAction(
         label: 'Traducir',
         icon: '🌍',
-        command: 'traduce buenos dias al ingles'),
+        command: 'traducir'),
     QuickAction(label: 'Clima', icon: '☁️', command: 'clima en Tena'),
     QuickAction(label: 'Noticias', icon: '📰', command: 'noticias'),
     QuickAction(label: 'Alarmas', icon: '⏰', command: 'alarma a las 7 con 0'),

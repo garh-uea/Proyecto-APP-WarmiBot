@@ -15,6 +15,9 @@ class TranslationService {
       : _client = client ?? ApiClient.instance.dio;
   static final TranslationService instance = TranslationService._();
 
+  /// Constructor visible para pruebas con un adaptador HTTP controlado.
+  TranslationService.forTesting(Dio client) : _client = client;
+
   Future<String> translate(String text, String targetLang,
       {String sourceLang = 'auto'}) async {
     if (text.trim().isEmpty) return '';
@@ -40,17 +43,21 @@ class TranslationService {
         }),
       );
       if (response.statusCode == 200) {
-        final data = response.data is String
-            ? jsonDecode(response.data as String) as List
-            : response.data as List;
-        final translations = data[0] as List;
+        final decoded = response.data is String
+            ? jsonDecode(response.data as String)
+            : response.data;
+        if (decoded is! List || decoded.isEmpty || decoded[0] is! List) {
+          throw const FormatException('Respuesta de traducción no válida');
+        }
+        final translations = decoded[0] as List;
         final result = StringBuffer();
         for (final part in translations) {
-          if (part != null && (part as List).isNotEmpty && part[0] != null) {
+          if (part is List && part.isNotEmpty && part[0] is String) {
             result.write(part[0] as String);
           }
         }
-        return result.toString().trim();
+        final translated = result.toString().trim();
+        if (translated.isNotEmpty) return translated;
       }
     } catch (e) {
       throw Exception(

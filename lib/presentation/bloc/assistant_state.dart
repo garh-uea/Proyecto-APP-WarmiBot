@@ -13,6 +13,7 @@ class AssistantState extends Equatable {
   final bool isProcessing;
   final String? errorMessage;
   final double soundLevel; // 0.0–1.0 para animar onda
+  final bool showHomeMenu;
 
   const AssistantState({
     this.messages = const [],
@@ -20,6 +21,7 @@ class AssistantState extends Equatable {
     this.isProcessing = false,
     this.errorMessage,
     this.soundLevel = 0.0,
+    this.showHomeMenu = true,
   });
 
   AssistantState copyWith({
@@ -28,6 +30,7 @@ class AssistantState extends Equatable {
     bool? isProcessing,
     String? errorMessage,
     double? soundLevel,
+    bool? showHomeMenu,
   }) =>
       AssistantState(
         messages: messages ?? this.messages,
@@ -35,9 +38,17 @@ class AssistantState extends Equatable {
         isProcessing: isProcessing ?? this.isProcessing,
         errorMessage: errorMessage,
         soundLevel: soundLevel ?? this.soundLevel,
+        showHomeMenu: showHomeMenu ?? this.showHomeMenu,
       );
 
   @override
   List<Object?> get props =>
-      [messages, avatarState, isProcessing, errorMessage, soundLevel];
+      [
+        messages,
+        avatarState,
+        isProcessing,
+        errorMessage,
+        soundLevel,
+        showHomeMenu,
+      ];
 }

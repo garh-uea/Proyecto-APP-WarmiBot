@@ -48,6 +48,14 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
+  void _scrollToTop() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollCtrl.hasClients) {
+        _scrollCtrl.jumpTo(_scrollCtrl.position.minScrollExtent);
+      }
+    });
+  }
+
   Future<void> _submitCommand(String text) async {
     final type = CommandParser.detect(text);
     if (type == CommandType.alarma ||
@@ -78,7 +86,11 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     return BlocConsumer<AssistantBloc, AssistantState>(
       listener: (context, state) {
-        if (state.messages.isNotEmpty) _scrollToBottom();
+        if (state.showHomeMenu) {
+          _scrollToTop();
+        } else if (state.messages.isNotEmpty) {
+          _scrollToBottom();
+        }
       },
       builder: (context, state) {
         return Container(
@@ -102,7 +114,7 @@ class _HomePageState extends State<HomePage> {
               ),
 
               // ── Acciones rápidas (visibles siempre) ───────────────────
-              if (state.messages.length <= 2)
+              if (state.showHomeMenu || state.messages.length <= 2)
                 QuickActionsGrid(onAction: (cmd) => _submitCommand(cmd)),
 
               // ── Barra de input ──────────────────────────────────────────
@@ -195,6 +207,9 @@ class _HomePageState extends State<HomePage> {
 
   // ── Vista de chat (con mensajes) ──────────────────────────────────────────
   Widget _buildChatBody(BuildContext context, AssistantState state) {
+    final visibleMessages = state.showHomeMenu
+        ? state.messages.take(1).toList(growable: false)
+        : state.messages;
     return Column(
       children: [
         // Avatar pequeño en la parte superior durante conversación
@@ -211,8 +226,8 @@ class _HomePageState extends State<HomePage> {
           child: ListView.builder(
             controller: _scrollCtrl,
             padding: const EdgeInsets.only(top: 4, bottom: 8),
-            itemCount: state.messages.length,
-            itemBuilder: (_, i) => ChatBubble(message: state.messages[i]),
+            itemCount: visibleMessages.length,
+            itemBuilder: (_, i) => ChatBubble(message: visibleMessages[i]),
           ),
         ),
       ],

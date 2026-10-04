@@ -48,7 +48,7 @@ class ConversationsPage extends StatelessWidget {
   void _confirmClear(BuildContext context) {
     showDialog(
       context: context,
-      builder: (_) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         backgroundColor: AppColors.bgCard,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text('Limpiar historial',
@@ -57,14 +57,14 @@ class ConversationsPage extends StatelessWidget {
             style: TextStyle(color: AppColors.textSecondary)),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext),
             child: const Text('Cancelar',
                 style: TextStyle(color: AppColors.textMuted)),
           ),
           ElevatedButton(
             onPressed: () {
+              Navigator.pop(dialogContext);
               context.read<AssistantBloc>().add(const ClearChat());
-              Navigator.pop(context);
             },
             style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.accentCoral),

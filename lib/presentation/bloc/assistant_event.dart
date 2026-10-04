@@ -47,6 +47,11 @@ class ClearChat extends AssistantEvent {
   const ClearChat();
 }
 
+/// Restaura la presentación principal sin borrar el historial de la sesión.
+class ShowHomeMenu extends AssistantEvent {
+  const ShowHomeMenu();
+}
+
 class InitAssistant extends AssistantEvent {
   const InitAssistant();
 }
