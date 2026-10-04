@@ -63,40 +63,45 @@ class AssistantBloc extends Bloc<AssistantEvent, AssistantState> {
     on<SpeechRecognitionFailed>(_onSpeechRecognitionFailed);
     on<SpeechListeningEnded>(_onSpeechListeningEnded);
     on<ClearChat>(_onClearChat);
+    on<ShowHomeMenu>(_onShowHomeMenu);
   }
 
   // ── Init ──────────────────────────────────────────────────────────────────
 
   Future<void> _onInit(
-      InitAssistant event, Emitter<AssistantState> emit) async {
+    InitAssistant event,
+    Emitter<AssistantState> emit,
+  ) async {
     final unavailable = <String>[];
     try {
       await _tts.init();
     } catch (_) {
       unavailable.add('lectura en voz alta');
     }
-    try {
-      if (!await _stt.init()) unavailable.add('reconocimiento de voz');
-    } catch (_) {
-      unavailable.add('reconocimiento de voz');
-    }
+    // SpeechToText.initialize puede abrir el permiso del micrófono en Android.
+    // Se inicializa únicamente tras la explicación y aceptación en HomePage.
     try {
       await _alarm.init();
     } catch (_) {
       unavailable.add('alarmas');
     }
 
-    var welcome = '¡Hola! Soy WarmiBot, tu asistente inteligente. '
+    var welcome =
+        '¡Hola! Soy WarmiBot, tu asistente inteligente. '
         'Puedes escribirme o tocar el micrófono para hablarme. ¿En qué te ayudo?';
     if (unavailable.isNotEmpty) {
-      welcome += '\n\nAlgunas funciones necesitan revisión en este '
+      welcome +=
+          '\n\nAlgunas funciones necesitan revisión en este '
           'dispositivo: ${unavailable.join(', ')}. El chat por teclado sigue disponible.';
     }
 
-    emit(state.copyWith(
-      messages: [ChatMessage.bot(welcome)],
-      avatarState: AvatarState.idle,
-    ));
+    emit(
+      state.copyWith(
+        messages: [ChatMessage.bot(welcome)],
+        avatarState: AvatarState.idle,
+        showHomeMenu: true,
+      ),
+    );
     try {
       await _tts.speak(welcome);
     } catch (_) {
@@ -107,7 +112,9 @@ class AssistantBloc extends Bloc<AssistantEvent, AssistantState> {
   // ── Texto enviado ─────────────────────────────────────────────────────────
 
   Future<void> _onProcessText(
-      ProcessTextCommand event, Emitter<AssistantState> emit) async {
+    ProcessTextCommand event,
+    Emitter<AssistantState> emit,
+  ) async {
     final text = event.text.trim();
     if (text.isEmpty) return;
 
@@ -115,20 +122,25 @@ class AssistantBloc extends Bloc<AssistantEvent, AssistantState> {
     final userMsg = ChatMessage.user(text);
     final loading = ChatMessage.loading();
 
-    emit(state.copyWith(
-      messages: [...state.messages, userMsg, loading],
-      avatarState: AvatarState.thinking,
-      isProcessing: true,
-    ));
+    emit(
+      state.copyWith(
+        messages: [...state.messages, userMsg, loading],
+        avatarState: AvatarState.thinking,
+        isProcessing: true,
+        showHomeMenu: false,
+      ),
+    );
 
     final response = await _resolveCommand(text);
 
     final msgs = [...previousMessages, userMsg, ChatMessage.bot(response)];
-    emit(state.copyWith(
-      messages: msgs,
-      avatarState: AvatarState.speaking,
-      isProcessing: false,
-    ));
+    emit(
+      state.copyWith(
+        messages: msgs,
+        avatarState: AvatarState.speaking,
+        isProcessing: false,
+      ),
+    );
     try {
       await _tts.speak(response);
     } catch (_) {
@@ -140,7 +152,9 @@ class AssistantBloc extends Bloc<AssistantEvent, AssistantState> {
   // ── Voz ──────────────────────────────────────────────────────────────────
 
   Future<void> _onStartListening(
-      StartListening event, Emitter<AssistantState> emit) async {
+    StartListening event,
+    Emitter<AssistantState> emit,
+  ) async {
     try {
       await _tts.stop();
     } catch (_) {
@@ -155,39 +169,80 @@ class AssistantBloc extends Bloc<AssistantEvent, AssistantState> {
   }
 
   Future<void> _onStopListening(
-      StopListening event, Emitter<AssistantState> emit) async {
+    StopListening event,
+    Emitter<AssistantState> emit,
+  ) async {
     await _stt.stop();
     emit(state.copyWith(avatarState: AvatarState.idle));
   }
 
   Future<void> _onSpeechReceived(
-      SpeechReceived event, Emitter<AssistantState> emit) async {
+    SpeechReceived event,
+    Emitter<AssistantState> emit,
+  ) async {
     add(ProcessTextCommand(event.text));
   }
 
   Future<void> _onSpeechRecognitionFailed(
-      SpeechRecognitionFailed event, Emitter<AssistantState> emit) async {
-    emit(state.copyWith(
-      messages: [
-        ...state.messages,
-        ChatMessage.bot(event.message, type: MessageType.error),
-      ],
-      avatarState: AvatarState.error,
-      isProcessing: false,
-      errorMessage: event.message,
-    ));
+    SpeechRecognitionFailed event,
+    Emitter<AssistantState> emit,
+  ) async {
+    emit(
+      state.copyWith(
+        messages: [
+          ...state.messages,
+          ChatMessage.bot(event.message, type: MessageType.error),
+        ],
+        avatarState: AvatarState.error,
+        isProcessing: false,
+        errorMessage: event.message,
+      ),
+    );
   }
 
   Future<void> _onSpeechListeningEnded(
-      SpeechListeningEnded event, Emitter<AssistantState> emit) async {
+    SpeechListeningEnded event,
+    Emitter<AssistantState> emit,
+  ) async {
     if (state.avatarState == AvatarState.listening) {
       emit(state.copyWith(avatarState: AvatarState.idle, soundLevel: 0.0));
     }
   }
 
   Future<void> _onClearChat(
-      ClearChat event, Emitter<AssistantState> emit) async {
-    emit(state.copyWith(messages: [], avatarState: AvatarState.idle));
+    ClearChat event,
+    Emitter<AssistantState> emit,
+  ) async {
+    emit(
+      state.copyWith(
+        messages: const [],
+        avatarState: AvatarState.idle,
+        isProcessing: false,
+        soundLevel: 0,
+        showHomeMenu: true,
+      ),
+    );
+    try {
+      await _tts.stop();
+    } catch (_) {}
+  }
+
+  Future<void> _onShowHomeMenu(
+    ShowHomeMenu event,
+    Emitter<AssistantState> emit,
+  ) async {
+    emit(
+      state.copyWith(
+        avatarState: AvatarState.idle,
+        isProcessing: false,
+        soundLevel: 0,
+        showHomeMenu: true,
+      ),
+    );
+    try {
+      await _tts.stop();
+      await _stt.stop();
+    } catch (_) {}
   }
 
   // ── Motor de inferencia de comandos ──────────────────────────────────────
@@ -218,39 +273,41 @@ class AssistantBloc extends Bloc<AssistantEvent, AssistantState> {
 
         // ── Clima ─────────────────────────────────────────────────────────
         case CommandType.clima:
-          final city = CommandParser.extractCity(text,
-              fallback: AppConstants.defaultCity);
+          final city = CommandParser.extractCity(
+            text,
+            fallback: AppConstants.defaultCity,
+          );
           final result = await _weather.getWeather(city);
           return result.summary;
 
         // ── Buscar Wikipedia ──────────────────────────────────────────────
         case CommandType.buscar:
-          String query = text;
-          for (final word in [
-            'busca',
-            'buscar',
-            'que es',
-            'dime sobre',
-            'informacion sobre',
-            'quien es'
-          ]) {
-            query = query.replaceAll(word, '');
+          final query = CommandParser.extractSearchQuery(rawText);
+          if (query.isEmpty) {
+            return 'Para buscar, escribe o di: “Busca” seguido del tema. '
+                'Ejemplo: “Busca información sobre la Amazonía ecuatoriana”.';
           }
-          query = query.trim();
-          if (query.isEmpty) return 'Dime qué quieres que busque.';
           final result = await _search.searchWikipedia(query);
-          return result;
+          return 'Resultado para “$query”:\n$result';
 
         // ── Traducir ──────────────────────────────────────────────────────
         case CommandType.traducir:
-          final langEntry = CommandParser.extractLanguage(text);
+          final langEntry = CommandParser.extractLanguage(rawText);
           if (langEntry == null) {
-            return 'Dime el idioma al que quieres traducir. Por ejemplo: "traduce buenos días al inglés".';
+            return 'Para traducir, escribe o di: “Traduce [frase] al '
+                '[idioma]”. Ejemplo: “Traduce buenos días al inglés”. '
+                'Puedes usar inglés, francés, italiano, alemán, portugués, '
+                'chino, japonés o español.';
           }
-          final phrase = CommandParser.extractPhraseToTranslate(text);
-          if (phrase.isEmpty) return 'Dime la frase que quieres traducir.';
-          final translated =
-              await _translation.translate(phrase, langEntry.value);
+          final phrase = CommandParser.extractPhraseToTranslate(rawText);
+          if (phrase.isEmpty) {
+            return 'Falta la frase. Usa, por ejemplo: '
+                '“Traduce buenos días al inglés”.';
+          }
+          final translated = await _translation.translate(
+            phrase,
+            langEntry.value,
+          );
           return '"$phrase" en ${langEntry.key} es: "$translated".';
 
         // ── Noticias ──────────────────────────────────────────────────────
@@ -285,8 +342,9 @@ class AssistantBloc extends Bloc<AssistantEvent, AssistantState> {
           if (nums.isEmpty) {
             return 'Dime cuántos minutos o segundos para el temporizador.';
           }
-          final seconds =
-              text.contains('segundo') ? nums.first : nums.first * 60;
+          final seconds = text.contains('segundo')
+              ? nums.first
+              : nums.first * 60;
           if (seconds <= 0) {
             return 'El temporizador debe durar al menos un segundo.';
           }
@@ -308,13 +366,21 @@ class AssistantBloc extends Bloc<AssistantEvent, AssistantState> {
           if (what.isEmpty) what = 'Tarea pendiente';
           // Por defecto: en 1 hora
           final scheduledAt = DateTime.now().add(const Duration(hours: 1));
-          final reminder = await _reminders.insert(Reminder(
-            text: what,
-            scheduledAt: scheduledAt,
-            type: ReminderType.reminder,
-          ));
-          await _alarm.scheduleReminder(reminder);
-          return 'Recordatorio guardado: "$what".';
+          final reminder = await _reminders.insert(
+            Reminder(
+              text: what,
+              scheduledAt: scheduledAt,
+              type: ReminderType.reminder,
+            ),
+          );
+          try {
+            await _alarm.scheduleReminder(reminder);
+            return 'Recordatorio guardado: "$what".';
+          } catch (_) {
+            return 'Recordatorio guardado: "$what". No habrá alerta local '
+                'hasta que habilites las notificaciones, pero el registro '
+                'permanece en el dispositivo y se sincronizará.';
+          }
 
         // ── WhatsApp ──────────────────────────────────────────────────────
         case CommandType.whatsapp:
@@ -333,9 +399,11 @@ class AssistantBloc extends Bloc<AssistantEvent, AssistantState> {
           }
           final msg = text
               .replaceAll(
-                  RegExp(
-                      r'envia mensaje|manda mensaje|mensaje a|whatsapp a|a $name'),
-                  '')
+                RegExp(
+                  r'envia mensaje|manda mensaje|mensaje a|whatsapp a|a $name',
+                ),
+                '',
+              )
               .trim();
           final whatsappUrl =
               'whatsapp://send?phone=$phone&text=${Uri.encodeComponent(msg.isEmpty ? 'Hola' : msg)}';
@@ -380,7 +448,9 @@ class AssistantBloc extends Bloc<AssistantEvent, AssistantState> {
         case CommandType.musica:
           final query = text
               .replaceAll(
-                  RegExp(r'reproduce|pon musica|toca|quiero escuchar'), '')
+                RegExp(r'reproduce|pon musica|toca|quiero escuchar'),
+                '',
+              )
               .trim();
           final url = query.isNotEmpty
               ? 'https://music.youtube.com/search?q=${Uri.encodeComponent(query)}'
@@ -419,9 +489,9 @@ class AssistantBloc extends Bloc<AssistantEvent, AssistantState> {
   }
 
   @override
-  Future<void> close() {
-    _tts.dispose();
+  Future<void> close() async {
+    await _tts.dispose();
     _stt.dispose();
-    return super.close();
+    await super.close();
   }
 }

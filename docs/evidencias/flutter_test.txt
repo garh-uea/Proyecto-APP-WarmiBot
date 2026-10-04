@@ -1,0 +1,11 @@
+00:00 +0: loading C:/WarmiBot/test/backend_api_service_test.dart
+00:00 +0: C:/WarmiBot/test/backend_api_service_test.dart: consulta /health y valida una respuesta saludable
+00:00 +1: C:/WarmiBot/test/backend_api_service_test.dart: rechaza respuestas no saludables aunque sean HTTP 200
+00:00 +2: C:/WarmiBot/test/backend_api_service_test.dart: rechaza una URL base que no sea HTTP o HTTPS
+00:01 +3: C:/WarmiBot/test/command_parser_test.dart: CommandParser reconoce solicitudes de clima escritas de distintas formas
+00:01 +4: C:/WarmiBot/test/command_parser_test.dart: CommandParser extrae ciudades de una o varias palabras
+00:01 +5: C:/WarmiBot/test/command_parser_test.dart: CommandParser usa la ciudad predeterminada si no se indicó una
+00:03 +6: C:/WarmiBot/test/weather_service_test.dart: consulta Open-Meteo cuando no existe una clave de OpenWeather
+00:03 +7: C:/WarmiBot/test/weather_service_test.dart: informa cuando no encuentra la ciudad
+00:05 +8: C:/WarmiBot/test/widget_test.dart: WarmiBot inicia correctamente
+00:07 +9: All tests passed!

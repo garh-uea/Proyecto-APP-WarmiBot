@@ -25,7 +25,7 @@ class VoiceButton extends StatefulWidget {
 class _VoiceButtonState extends State<VoiceButton>
     with SingleTickerProviderStateMixin {
   late AnimationController _ctrl;
-  late Animation<double>   _anim;
+  late Animation<double> _anim;
 
   @override
   void initState() {
@@ -42,12 +42,16 @@ class _VoiceButtonState extends State<VoiceButton>
     if (widget.avatarState == AvatarState.listening) {
       _ctrl.repeat(reverse: true);
     } else {
-      _ctrl.stop(); _ctrl.reset();
+      _ctrl.stop();
+      _ctrl.reset();
     }
   }
 
   @override
-  void dispose() { _ctrl.dispose(); super.dispose(); }
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
 
   bool get _isListening => widget.avatarState == AvatarState.listening;
 
@@ -57,9 +61,11 @@ class _VoiceButtonState extends State<VoiceButton>
       onTap: widget.onTap,
       child: AnimatedBuilder(
         animation: _anim,
-        builder: (_, child) => Transform.scale(scale: _anim.value, child: child),
+        builder: (_, child) =>
+            Transform.scale(scale: _anim.value, child: child),
         child: Container(
-          width: widget.size, height: widget.size,
+          width: widget.size,
+          height: widget.size,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             gradient: RadialGradient(
@@ -69,7 +75,9 @@ class _VoiceButtonState extends State<VoiceButton>
             ),
             boxShadow: [
               BoxShadow(
-                color: (_isListening ? AppColors.neonGreen : AppColors.primaryGreen)
+                color: (_isListening
+                        ? AppColors.neonGreen
+                        : AppColors.primaryGreen)
                     .withValues(alpha: 0.6),
                 blurRadius: _isListening ? 24 : 12,
                 spreadRadius: _isListening ? 4 : 2,
@@ -78,8 +86,8 @@ class _VoiceButtonState extends State<VoiceButton>
           ),
           child: Icon(
             _isListening ? Icons.stop_rounded : Icons.mic_rounded,
-            color:  Colors.white,
-            size:   widget.size * 0.42,
+            color: Colors.white,
+            size: widget.size * 0.42,
           ),
         ),
       ),

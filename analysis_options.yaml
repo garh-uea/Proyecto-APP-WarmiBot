@@ -1,5 +1,12 @@
 include: package:flutter_lints/flutter.yaml
 
+analyzer:
+  exclude:
+    - backups/**
+    - backend/**
+    - build/**
+    - flutter_warmiboot/**
+
 linter:
   rules:
     prefer_const_constructors: true

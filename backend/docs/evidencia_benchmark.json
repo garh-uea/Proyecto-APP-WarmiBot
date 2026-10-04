@@ -1,0 +1,27 @@
+{
+  "fecha": "2026-07-19",
+  "dataset": {
+    "conversations": 20,
+    "messages": 100
+  },
+  "before_n_plus_one": {
+    "queries": 21,
+    "milliseconds": 28.124
+  },
+  "after_eager_loading": {
+    "queries": 2,
+    "milliseconds": 5.78
+  },
+  "query_reduction_percent": 90.48,
+  "cache_aside": {
+    "first_read": {
+      "result": "MISS",
+      "milliseconds": 9.66
+    },
+    "second_read": {
+      "result": "HIT",
+      "milliseconds": 4.428
+    }
+  },
+  "command": "python scripts\\benchmark.py"
+}

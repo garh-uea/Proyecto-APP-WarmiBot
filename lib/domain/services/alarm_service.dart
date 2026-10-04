@@ -9,6 +9,7 @@ import 'package:timezone/timezone.dart' as tz;
 
 import '../../core/constants/app_constants.dart';
 import '../models/reminder.dart';
+import 'device_capability_service.dart';
 
 class AlarmService {
   AlarmService._();
@@ -19,6 +20,7 @@ class AlarmService {
       FlutterLocalNotificationsPlugin();
 
   bool _initialized = false;
+  final DeviceCapabilityService _permissions = DeviceCapabilityService();
 
   // ==========================================================
   // Inicialización
@@ -30,18 +32,17 @@ class AlarmService {
     tz_data.initializeTimeZones();
 
     try {
-      tz.setLocalLocation(
-        tz.getLocation('America/Guayaquil'),
-      );
+      tz.setLocalLocation(tz.getLocation('America/Guayaquil'));
     } catch (_) {}
 
-    const androidSettings =
-        AndroidInitializationSettings('@mipmap/ic_launcher');
+    const androidSettings = AndroidInitializationSettings(
+      '@mipmap/ic_launcher',
+    );
 
     const iosSettings = DarwinInitializationSettings(
-      requestAlertPermission: true,
-      requestBadgePermission: true,
-      requestSoundPermission: true,
+      requestAlertPermission: false,
+      requestBadgePermission: false,
+      requestSoundPermission: false,
     );
 
     const initializationSettings = InitializationSettings(
@@ -65,7 +66,8 @@ class AlarmService {
 
     await _plugin
         .resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin>()
+          AndroidFlutterLocalNotificationsPlugin
+        >()
         ?.createNotificationChannel(channel);
 
     _initialized = true;
@@ -76,9 +78,7 @@ class AlarmService {
   // ==========================================================
 
   void _onNotificationTap(NotificationResponse response) {
-    debugPrint(
-      'Notificación presionada: ${response.payload}',
-    );
+    debugPrint('Notificación presionada: ${response.payload}');
   }
 
   // ==========================================================
@@ -119,6 +119,7 @@ class AlarmService {
     if (hour < 0 || hour > 23 || minute < 0 || minute > 59) {
       throw ArgumentError('La hora debe estar entre 00:00 y 23:59.');
     }
+    await _requireNotifications();
     await init();
 
     final now = tz.TZDateTime.now(tz.local);
@@ -160,11 +161,12 @@ class AlarmService {
     if (seconds <= 0) {
       throw ArgumentError.value(seconds, 'seconds', 'Debe ser mayor que cero');
     }
+    await _requireNotifications();
     await init();
 
-    final scheduledDate = tz.TZDateTime.now(tz.local).add(
-      Duration(seconds: seconds),
-    );
+    final scheduledDate = tz.TZDateTime.now(
+      tz.local,
+    ).add(Duration(seconds: seconds));
     final scheduleMode = await _androidScheduleMode();
 
     await _plugin.zonedSchedule(
@@ -181,21 +183,15 @@ class AlarmService {
   // Recordatorio desde objeto Reminder
   // ==========================================================
 
-  Future<void> scheduleReminder(
-    Reminder reminder,
-  ) async {
+  Future<void> scheduleReminder(Reminder reminder) async {
+    await _requireNotifications();
     await init();
 
     if (reminder.id == null) return;
 
-    final scheduledDate = tz.TZDateTime.from(
-      reminder.scheduledAt,
-      tz.local,
-    );
+    final scheduledDate = tz.TZDateTime.from(reminder.scheduledAt, tz.local);
 
-    if (scheduledDate.isBefore(
-      tz.TZDateTime.now(tz.local),
-    )) {
+    if (scheduledDate.isBefore(tz.TZDateTime.now(tz.local))) {
       return;
     }
     final scheduleMode = await _androidScheduleMode();
@@ -219,6 +215,7 @@ class AlarmService {
     required String title,
     required String body,
   }) async {
+    await _requireNotifications();
     await init();
 
     await _plugin.show(
@@ -235,9 +232,7 @@ class AlarmService {
 
   Future<void> cancel(int id) async {
     await init();
-    await _plugin.cancel(
-      id: id,
-    );
+    await _plugin.cancel(id: id);
   }
 
   Future<void> cancelAll() async {
@@ -246,24 +241,16 @@ class AlarmService {
   }
 
   Future<AndroidScheduleMode> _androidScheduleMode() async {
-    final android = _plugin.resolvePlatformSpecificImplementation<
-        AndroidFlutterLocalNotificationsPlugin>();
-    if (android == null) return AndroidScheduleMode.exactAllowWhileIdle;
+    // No solicitamos el permiso de alarmas exactas para recordatorios.
+    return AndroidScheduleMode.inexactAllowWhileIdle;
+  }
 
-    final notificationsAllowed = await android.requestNotificationsPermission();
-    if (notificationsAllowed == false) {
-      throw Exception(
-        'WarmiBot necesita permiso de notificaciones para crear alarmas.',
+  Future<void> _requireNotifications() async {
+    final status = await _permissions.status(DeviceCapability.notifications);
+    if (status != CapabilityState.granted) {
+      throw StateError(
+        'Notificaciones no disponibles. El recordatorio permanece guardado.',
       );
     }
-
-    var exactAllowed = await android.canScheduleExactNotifications();
-    if (exactAllowed == false) {
-      await android.requestExactAlarmsPermission();
-      exactAllowed = await android.canScheduleExactNotifications();
-    }
-    return exactAllowed == false
-        ? AndroidScheduleMode.inexactAllowWhileIdle
-        : AndroidScheduleMode.exactAllowWhileIdle;
   }
 }

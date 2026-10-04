@@ -4,68 +4,72 @@
 // ============================================================
 
 import 'dart:convert';
-import 'package:http/http.dart' as http;
+import 'package:dio/dio.dart';
+
+import '../../core/network/api_client.dart';
 
 class SearchService {
-  SearchService._();
+  final Dio _client;
+
+  SearchService._({Dio? client}) : _client = client ?? ApiClient.instance.dio;
   static final SearchService instance = SearchService._();
+
+  /// Constructor visible para pruebas con un adaptador HTTP controlado.
+  SearchService.forTesting(Dio client) : _client = client;
 
   // ── Wikipedia ────────────────────────────────────────────────────────────────
 
   Future<String> searchWikipedia(String query, {int sentences = 3}) async {
-    // 1. Buscar título exacto
-    final searchUri = Uri.parse(
-      'https://es.wikipedia.org/w/api.php'
-    ).replace(queryParameters: {
-      'action': 'opensearch',
-      'search': query,
-      'limit':  '1',
-      'format': 'json',
-    });
+    final cleanQuery = query.trim();
+    if (cleanQuery.isEmpty) return 'Escribe un tema para buscar.';
 
-    final searchResp = await http.get(searchUri)
-        .timeout(const Duration(seconds: 8));
-    if (searchResp.statusCode != 200) {
-      return await _searchDuckDuckGo(query);
+    // MediaWiki busca por relevancia, sigue redirecciones y devuelve el
+    // extracto en una sola llamada. Es más tolerante que exigir un título exacto.
+    final uri = Uri.parse('https://es.wikipedia.org/w/api.php').replace(
+      queryParameters: {
+        'action': 'query',
+        'generator': 'search',
+        'gsrsearch': cleanQuery,
+        'gsrlimit': '1',
+        'prop': 'extracts',
+        'exintro': 'true',
+        'explaintext': 'true',
+        'exsentences': sentences.toString(),
+        'redirects': '1',
+        'format': 'json',
+        'origin': '*',
+      },
+    );
+
+    try {
+      final response = await _client.getUri<dynamic>(
+        uri,
+        options: Options(extra: const {
+          skipAuthKey: true,
+          skipRefreshKey: true,
+        }),
+      );
+      if (response.statusCode == 200) {
+        final data = response.data is String
+            ? jsonDecode(response.data as String) as Map<String, dynamic>
+            : Map<String, dynamic>.from(response.data as Map);
+        final queryData = data['query'];
+        if (queryData is Map && queryData['pages'] is Map) {
+          final pages = Map<dynamic, dynamic>.from(queryData['pages'] as Map);
+          if (pages.isNotEmpty) {
+            final page = Map<String, dynamic>.from(pages.values.first as Map);
+            final title = (page['title'] as String? ?? '').trim();
+            final extract = (page['extract'] as String? ?? '').trim();
+            if (extract.isNotEmpty) {
+              return title.isEmpty ? extract : '$title: $extract';
+            }
+          }
+        }
+      }
+    } catch (_) {
+      // DuckDuckGo conserva una segunda vía si Wikipedia no está disponible.
     }
-
-    final searchData = jsonDecode(searchResp.body) as List;
-    final titles = searchData[1] as List;
-    if (titles.isEmpty) {
-      return await _searchDuckDuckGo(query);
-    }
-
-    final title = titles.first as String;
-
-    // 2. Obtener extracto del artículo
-    final extractUri = Uri.parse(
-      'https://es.wikipedia.org/w/api.php'
-    ).replace(queryParameters: {
-      'action':        'query',
-      'titles':        title,
-      'prop':          'extracts',
-      'exintro':       'true',
-      'explaintext':   'true',
-      'exsentences':   sentences.toString(),
-      'format':        'json',
-    });
-
-    final extractResp = await http.get(extractUri)
-        .timeout(const Duration(seconds: 8));
-    if (extractResp.statusCode != 200) {
-      return await _searchDuckDuckGo(query);
-    }
-
-    final data  = jsonDecode(extractResp.body) as Map<String, dynamic>;
-    final pages = (data['query']['pages'] as Map<String, dynamic>);
-    final page  = pages.values.first as Map<String, dynamic>;
-    final extract = (page['extract'] as String? ?? '').trim();
-
-    if (extract.isEmpty) return await _searchDuckDuckGo(query);
-
-    // Truncar a ~3 oraciones
-    final parts = extract.split('. ');
-    return '${parts.take(sentences).join('. ')}.';
+    return _searchDuckDuckGo(cleanQuery);
   }
 
   // ── DuckDuckGo Instant Answer (fallback) ─────────────────────────────────────
@@ -73,18 +77,26 @@ class SearchService {
   Future<String> _searchDuckDuckGo(String query) async {
     final uri = Uri.parse('https://api.duckduckgo.com/').replace(
       queryParameters: {
-        'q':              query,
-        'format':         'json',
-        'no_redirect':    '1',
-        'skip_disambig':  '1',
-        'kl':             'es-es',
+        'q': query,
+        'format': 'json',
+        'no_redirect': '1',
+        'skip_disambig': '1',
+        'kl': 'es-es',
       },
     );
 
     try {
-      final resp = await http.get(uri).timeout(const Duration(seconds: 8));
+      final resp = await _client.getUri<dynamic>(
+        uri,
+        options: Options(extra: const {
+          skipAuthKey: true,
+          skipRefreshKey: true,
+        }),
+      );
       if (resp.statusCode == 200) {
-        final data = jsonDecode(resp.body) as Map<String, dynamic>;
+        final data = resp.data is String
+            ? jsonDecode(resp.data as String) as Map<String, dynamic>
+            : Map<String, dynamic>.from(resp.data as Map);
         final abstract_ = (data['AbstractText'] as String? ?? '').trim();
         if (abstract_.isNotEmpty) return abstract_;
         final answer = (data['Answer'] as String? ?? '').trim();
@@ -93,6 +105,6 @@ class SearchService {
     } catch (_) {}
 
     return 'No encontré información sobre "$query". '
-           'Intenta con palabras más específicas.';
+        'Intenta con palabras más específicas.';
   }
 }

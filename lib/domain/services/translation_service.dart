@@ -4,41 +4,64 @@
 // ============================================================
 
 import 'dart:convert';
-import 'package:http/http.dart' as http;
+import 'package:dio/dio.dart';
+
+import '../../core/network/api_client.dart';
 
 class TranslationService {
-  TranslationService._();
+  final Dio _client;
+
+  TranslationService._({Dio? client})
+      : _client = client ?? ApiClient.instance.dio;
   static final TranslationService instance = TranslationService._();
 
-  Future<String> translate(String text, String targetLang, {String sourceLang = 'auto'}) async {
+  /// Constructor visible para pruebas con un adaptador HTTP controlado.
+  TranslationService.forTesting(Dio client) : _client = client;
+
+  Future<String> translate(String text, String targetLang,
+      {String sourceLang = 'auto'}) async {
     if (text.trim().isEmpty) return '';
 
     // Usar la API pública de Google Translate (sin key)
-    final uri = Uri.parse('https://translate.googleapis.com/translate_a/single').replace(
+    final uri = Uri.parse('https://translate.googleapis.com/translate_a/single')
+        .replace(
       queryParameters: {
         'client': 'gtx',
-        'sl':     sourceLang,
-        'tl':     targetLang,
-        'dt':     't',
-        'q':      text,
+        'sl': sourceLang,
+        'tl': targetLang,
+        'dt': 't',
+        'q': text,
       },
     );
 
     try {
-      final response = await http.get(uri).timeout(const Duration(seconds: 10));
+      final response = await _client.getUri<dynamic>(
+        uri,
+        options: Options(extra: const {
+          skipAuthKey: true,
+          skipRefreshKey: true,
+        }),
+      );
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body) as List;
-        final translations = data[0] as List;
+        final decoded = response.data is String
+            ? jsonDecode(response.data as String)
+            : response.data;
+        if (decoded is! List || decoded.isEmpty || decoded[0] is! List) {
+          throw const FormatException('Respuesta de traducción no válida');
+        }
+        final translations = decoded[0] as List;
         final result = StringBuffer();
         for (final part in translations) {
-          if (part != null && (part as List).isNotEmpty && part[0] != null) {
+          if (part is List && part.isNotEmpty && part[0] is String) {
             result.write(part[0] as String);
           }
         }
-        return result.toString().trim();
+        final translated = result.toString().trim();
+        if (translated.isNotEmpty) return translated;
       }
     } catch (e) {
-      throw Exception('No pude conectarme al servicio de traducción. Verifica tu conexión.');
+      throw Exception(
+          'No pude conectarme al servicio de traducción. Verifica tu conexión.');
     }
 
     throw Exception('Error en el servicio de traducción.');

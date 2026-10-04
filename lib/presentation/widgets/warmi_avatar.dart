@@ -9,8 +9,8 @@ import '../bloc/assistant_state.dart';
 
 class WarmiAvatar extends StatefulWidget {
   final AvatarState avatarState;
-  final double      soundLevel;
-  final double      size;
+  final double soundLevel;
+  final double size;
 
   const WarmiAvatar({
     super.key,
@@ -25,31 +25,30 @@ class WarmiAvatar extends StatefulWidget {
 
 class _WarmiAvatarState extends State<WarmiAvatar>
     with TickerProviderStateMixin {
-
   late AnimationController _pulseCtrl;
   late AnimationController _waveCtrl;
   late AnimationController _idleCtrl;
-  late Animation<double>   _pulseAnim;
-  late Animation<double>   _waveAnim;
-  late Animation<double>   _idleAnim;
+  late Animation<double> _pulseAnim;
+  late Animation<double> _waveAnim;
+  late Animation<double> _idleAnim;
 
   @override
   void initState() {
     super.initState();
 
     _pulseCtrl = AnimationController(
-      vsync: this, duration: const Duration(milliseconds: 900));
-    _pulseAnim = Tween(begin: 1.0, end: 1.08).animate(
-        CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut));
+        vsync: this, duration: const Duration(milliseconds: 900));
+    _pulseAnim = Tween(begin: 1.0, end: 1.08)
+        .animate(CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut));
 
     _waveCtrl = AnimationController(
-      vsync: this, duration: const Duration(milliseconds: 600));
-    _waveAnim  = Tween(begin: 0.0, end: 1.0).animate(_waveCtrl);
+        vsync: this, duration: const Duration(milliseconds: 600));
+    _waveAnim = Tween(begin: 0.0, end: 1.0).animate(_waveCtrl);
 
-    _idleCtrl = AnimationController(
-      vsync: this, duration: const Duration(seconds: 3));
-    _idleAnim = Tween(begin: 0.0, end: 1.0).animate(
-        CurvedAnimation(parent: _idleCtrl, curve: Curves.easeInOut));
+    _idleCtrl =
+        AnimationController(vsync: this, duration: const Duration(seconds: 3));
+    _idleAnim = Tween(begin: 0.0, end: 1.0)
+        .animate(CurvedAnimation(parent: _idleCtrl, curve: Curves.easeInOut));
 
     _idleCtrl.repeat(reverse: true);
     _updateAnimations();
@@ -96,7 +95,7 @@ class _WarmiAvatarState extends State<WarmiAvatar>
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width:  widget.size,
+      width: widget.size,
       height: widget.size,
       child: Stack(alignment: Alignment.center, children: [
         // ── Anillos de onda (escucha / habla) ────────────────────────────
@@ -110,7 +109,7 @@ class _WarmiAvatarState extends State<WarmiAvatar>
           builder: (message, index) => Transform.scale(
             scale: _pulseAnim.value,
             child: Container(
-              width:  widget.size * 0.88,
+              width: widget.size * 0.88,
               height: widget.size * 0.88,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
@@ -134,13 +133,13 @@ class _WarmiAvatarState extends State<WarmiAvatar>
             child: child,
           ),
           child: Container(
-            width:  widget.size * 0.82,
+            width: widget.size * 0.82,
             height: widget.size * 0.82,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               gradient: const LinearGradient(
                 begin: Alignment.topLeft,
-                end:   Alignment.bottomRight,
+                end: Alignment.bottomRight,
                 colors: AppColors.avatarGradient,
               ),
               border: Border.all(
@@ -163,29 +162,14 @@ class _WarmiAvatarState extends State<WarmiAvatar>
     );
   }
 
-  // Imagen o emoji del avatar según estado
+  // Retrato amazónico compartido por los distintos estados del asistente.
   Widget _avatarContent() {
-    // Si tienes un asset de imagen, usa:
-    // return Image.asset('assets/images/warmi_avatar.png', fit: BoxFit.cover);
-    // Por ahora mostramos la inicial estilizada:
-    return Container(
-      color: Colors.transparent,
-      child: Center(
-        child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-          Text('🌿', style: TextStyle(fontSize: widget.size * 0.28)),
-          Text(
-            'W',
-            style: TextStyle(
-              fontSize:   widget.size * 0.22,
-              fontWeight: FontWeight.w900,
-              color:      Colors.white,
-              shadows: const [
-                Shadow(color: AppColors.accentGreen, blurRadius: 12),
-              ],
-            ),
-          ),
-        ]),
-      ),
+    return Image.asset(
+      'assets/images/warmibot_fondo.png',
+      fit: BoxFit.cover,
+      alignment: const Alignment(0, -0.42),
+      semanticLabel: 'Retrato ilustrado de WarmiBot, asistente amazónica',
+      filterQuality: FilterQuality.high,
     );
   }
 
@@ -198,7 +182,7 @@ class _WarmiAvatarState extends State<WarmiAvatar>
           return Opacity(
             opacity: (1.0 - progress) * 0.5,
             child: Container(
-              width:  widget.size * (0.7 + progress * 0.6),
+              width: widget.size * (0.7 + progress * 0.6),
               height: widget.size * (0.7 + progress * 0.6),
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
@@ -216,11 +200,16 @@ class _WarmiAvatarState extends State<WarmiAvatar>
 
   Color get _glowColor {
     switch (widget.avatarState) {
-      case AvatarState.listening: return AppColors.neonGreen;
-      case AvatarState.thinking:  return AppColors.accentTeal;
-      case AvatarState.speaking:  return AppColors.accentGreen;
-      case AvatarState.error:     return AppColors.accentCoral;
-      case AvatarState.idle:      return AppColors.primaryGreen;
+      case AvatarState.listening:
+        return AppColors.neonGreen;
+      case AvatarState.thinking:
+        return AppColors.accentTeal;
+      case AvatarState.speaking:
+        return AppColors.accentGreen;
+      case AvatarState.error:
+        return AppColors.accentCoral;
+      case AvatarState.idle:
+        return AppColors.primaryGreen;
     }
   }
 }
@@ -233,10 +222,10 @@ class _StateChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final (label, color) = switch (avatarState) {
       AvatarState.listening => ('Escuchando...', AppColors.neonGreen),
-      AvatarState.thinking  => ('Pensando...',   AppColors.accentTeal),
-      AvatarState.speaking  => ('Hablando...',   AppColors.accentGreen),
-      AvatarState.error     => ('Error',          AppColors.accentCoral),
-      AvatarState.idle      => ('WarmiBot',       AppColors.textMuted),
+      AvatarState.thinking => ('Pensando...', AppColors.accentTeal),
+      AvatarState.speaking => ('Hablando...', AppColors.accentGreen),
+      AvatarState.error => ('Error', AppColors.accentCoral),
+      AvatarState.idle => ('WarmiBot', AppColors.textMuted),
     };
 
     return Container(
@@ -249,8 +238,8 @@ class _StateChip extends StatelessWidget {
       child: Text(
         label,
         style: TextStyle(
-          fontSize:   11,
-          color:      color,
+          fontSize: 11,
+          color: color,
           fontWeight: FontWeight.w600,
         ),
       ),

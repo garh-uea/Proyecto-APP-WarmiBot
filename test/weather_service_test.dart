@@ -1,44 +1,37 @@
-import 'dart:convert';
-
+import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:http/http.dart' as http;
-import 'package:http/testing.dart';
 import 'package:warmibot/domain/services/weather_service.dart';
+
+import 'support/callback_http_adapter.dart';
 
 void main() {
   test('consulta Open-Meteo cuando no existe una clave de OpenWeather',
       () async {
-    final client = MockClient((request) async {
-      if (request.url.host == 'geocoding-api.open-meteo.com') {
-        expect(request.url.queryParameters['name'], 'Tena');
-        return http.Response(
-          jsonEncode({
-            'results': [
-              {
-                'name': 'Tena',
-                'latitude': -0.9938,
-                'longitude': -77.8129,
-              }
-            ],
-          }),
-          200,
-        );
+    final client = testDio((request) async {
+      if (request.uri.host == 'geocoding-api.open-meteo.com') {
+        expect(request.uri.queryParameters['name'], 'Tena');
+        return const TestHttpResponse(200, {
+          'results': [
+            {
+              'name': 'Tena',
+              'latitude': -0.9938,
+              'longitude': -77.8129,
+            }
+          ],
+        });
       }
-      if (request.url.host == 'api.open-meteo.com') {
-        return http.Response(
-          jsonEncode({
-            'current': {
-              'temperature_2m': 24.5,
-              'relative_humidity_2m': 86,
-              'apparent_temperature': 26.1,
-              'weather_code': 61,
-              'wind_speed_10m': 5.4,
-            },
-          }),
-          200,
-        );
+      if (request.uri.host == 'api.open-meteo.com') {
+        return const TestHttpResponse(200, {
+          'current': {
+            'temperature_2m': 24.5,
+            'relative_humidity_2m': 86,
+            'apparent_temperature': 26.1,
+            'weather_code': 61,
+            'wind_speed_10m': 5.4,
+          },
+        });
       }
-      return http.Response('No esperado', 500);
+      return const TestHttpResponse(500, {'detail': 'No esperado'});
     });
 
     final result = await WeatherService(client: client).getWeather('Tena');
@@ -50,8 +43,8 @@ void main() {
   });
 
   test('informa cuando no encuentra la ciudad', () async {
-    final client = MockClient(
-      (_) async => http.Response(jsonEncode({'results': []}), 200),
+    final Dio client = testDio(
+      (_) async => const TestHttpResponse(200, {'results': []}),
     );
 
     expect(
