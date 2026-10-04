@@ -10,6 +10,13 @@ import '../components/warmi_action_card.dart';
 class QuickActionsGrid extends StatelessWidget {
   final void Function(String command) onAction;
 
+  static const _accentColors = [
+    AppColors.accentTeal,
+    AppColors.accentAmber,
+    AppColors.accentGreen,
+    AppColors.accentCoral,
+  ];
+
   const QuickActionsGrid({super.key, required this.onAction});
 
   @override
@@ -44,6 +51,7 @@ class QuickActionsGrid extends StatelessWidget {
               return WarmiActionCard(
                 icon: action.icon,
                 label: action.label,
+                accentColor: _accentColors[i % _accentColors.length],
                 semanticLabel: '${action.label}. Ejecutar acción rápida',
                 onPressed: () => onAction(action.command),
               );

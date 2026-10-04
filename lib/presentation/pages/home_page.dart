@@ -93,16 +93,21 @@ class _HomePageState extends State<HomePage> {
         }
       },
       builder: (context, state) {
-        return Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: AppColors.bgGradient,
+        return Stack(
+          fit: StackFit.expand,
+          children: [
+            Positioned.fill(
+              child: Image.asset(
+                'assets/images/warmibot_fondo.png',
+                fit: BoxFit.cover,
+                alignment: Alignment.topCenter,
+                excludeFromSemantics: true,
+                filterQuality: FilterQuality.medium,
+              ),
             ),
-          ),
-          child: Column(
-            children: [
+            const Positioned.fill(child: _AmazonianBackgroundOverlay()),
+            Column(
+              children: [
               // ── AppBar ──────────────────────────────────────────────────
               _WarmiAppBar(state: state),
 
@@ -136,8 +141,9 @@ class _HomePageState extends State<HomePage> {
                   }
                 },
               ),
-            ],
-          ),
+              ],
+            ),
+          ],
         );
       },
     );
@@ -235,6 +241,29 @@ class _HomePageState extends State<HomePage> {
   }
 }
 
+class _AmazonianBackgroundOverlay extends StatelessWidget {
+  const _AmazonianBackgroundOverlay();
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          stops: const [0, 0.32, 0.68, 1],
+          colors: [
+            AppColors.bgDark.withValues(alpha: 0.30),
+            AppColors.bgDark.withValues(alpha: 0.58),
+            AppColors.bgDark.withValues(alpha: 0.90),
+            AppColors.bgDark.withValues(alpha: 0.98),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 // ── AppBar personalizado ──────────────────────────────────────────────────────
 
 class _WarmiAppBar extends StatelessWidget {
@@ -318,15 +347,13 @@ class _WarmiAppBar extends StatelessWidget {
                     color: AppColors.accentGreen.withValues(alpha: 0.5),
                   ),
                 ),
-                child: const Center(
-                  child: Text(
-                    'G',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
-                  ),
+                clipBehavior: Clip.antiAlias,
+                child: Image.asset(
+                  'assets/images/warmibot_fondo.png',
+                  fit: BoxFit.cover,
+                  alignment: const Alignment(0, -0.42),
+                  excludeFromSemantics: true,
+                  filterQuality: FilterQuality.high,
                 ),
               ),
             ),

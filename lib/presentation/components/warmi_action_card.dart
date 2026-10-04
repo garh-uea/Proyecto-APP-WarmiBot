@@ -9,6 +9,7 @@ class WarmiActionCard extends StatelessWidget {
   final String? semanticLabel;
   final VoidCallback onPressed;
   final bool selected;
+  final Color? accentColor;
 
   const WarmiActionCard({
     super.key,
@@ -17,6 +18,7 @@ class WarmiActionCard extends StatelessWidget {
     required this.onPressed,
     this.semanticLabel,
     this.selected = false,
+    this.accentColor,
   });
 
   @override
@@ -25,45 +27,67 @@ class WarmiActionCard extends StatelessWidget {
     final spacing = context.warmiSpacing;
     final radii = context.warmiRadii;
     final sizes = context.warmiSizes;
+    final accent = accentColor ?? colors.interactive;
 
     return Semantics(
       button: true,
       selected: selected,
       label: semanticLabel ?? label,
       excludeSemantics: true,
-      child: Material(
-        color: selected ? colors.interactive : colors.surface,
-        shape: RoundedRectangleBorder(
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              accent.withValues(alpha: selected ? 0.52 : 0.30),
+              colors.surface.withValues(alpha: 0.94),
+            ],
+          ),
           borderRadius: BorderRadius.circular(radii.medium),
-          side: BorderSide(color: selected ? colors.focus : colors.outline),
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: onPressed,
-          child: ConstrainedBox(
-            constraints: BoxConstraints(
-              minWidth: sizes.minTouchTarget,
-              minHeight: sizes.minTouchTarget,
+          border: Border.all(
+            color: selected ? colors.focus : accent.withValues(alpha: 0.58),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: accent.withValues(alpha: 0.16),
+              blurRadius: 8,
+              spreadRadius: 1,
             ),
-            child: Padding(
-              padding: EdgeInsets.all(spacing.xxs),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(icon, style: Theme.of(context).textTheme.titleLarge),
-                  SizedBox(height: spacing.xxs),
-                  Text(
-                    label,
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: selected
-                          ? colors.onInteractive
-                          : colors.textSecondary,
+          ],
+        ),
+        child: Material(
+          color: Colors.transparent,
+          borderRadius: BorderRadius.circular(radii.medium),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: onPressed,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                minWidth: sizes.minTouchTarget,
+                minHeight: sizes.minTouchTarget,
+              ),
+              child: Padding(
+                padding: EdgeInsets.all(spacing.xxs),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(icon, style: Theme.of(context).textTheme.titleLarge),
+                    SizedBox(height: spacing.xxs),
+                    Text(
+                      label,
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                            color: selected
+                                ? colors.onInteractive
+                                : colors.textPrimary,
+                            fontWeight: FontWeight.w600,
+                          ),
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    textAlign: TextAlign.center,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),

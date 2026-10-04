@@ -184,9 +184,6 @@ class _ProfilePageState extends State<ProfilePage> {
   Widget build(BuildContext context) {
     final session = context.watch<AuthCubit>().state.session;
     final user = session?.user;
-    final initial = (user?.displayName.trim().isNotEmpty ?? false)
-        ? user!.displayName.trim()[0].toUpperCase()
-        : 'W';
     return Scaffold(
       backgroundColor: Colors.transparent,
       appBar: AppBar(
@@ -208,15 +205,13 @@ class _ProfilePageState extends State<ProfilePage> {
                       const LinearGradient(colors: AppColors.avatarGradient),
                   border: Border.all(color: AppColors.accentGreen, width: 2.5),
                 ),
-                child: Center(
-                  child: Text(
-                    initial,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 34,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
+                clipBehavior: Clip.antiAlias,
+                child: Image.asset(
+                  'assets/images/warmibot_fondo.png',
+                  fit: BoxFit.cover,
+                  alignment: const Alignment(0, -0.42),
+                  semanticLabel: 'Retrato ilustrado de WarmiBot',
+                  filterQuality: FilterQuality.high,
                 ),
               ),
               const SizedBox(height: 12),
@@ -305,7 +300,8 @@ class _ProfilePageState extends State<ProfilePage> {
           const SizedBox(height: 16),
           _sectionTitle('Información', context),
           _tile(Icons.info_outline_rounded, 'Acerca de WarmiBot',
-              'Universidad Estatal Amazónica', context),
+              'Conoce el propósito de la aplicación', context,
+              () => _showAboutWarmiBot(context)),
           _tile(Icons.code_rounded, 'Tecnologías', 'Flutter · Dart · BLoC',
               context),
           _tile(Icons.translate_rounded, 'Identidad Kichwa',
@@ -321,11 +317,44 @@ class _ProfilePageState extends State<ProfilePage> {
           const SizedBox(height: 24),
           // Versión
           Center(
-            child: Text('WarmiBot © 2025 · UEA · Tena, Napo',
+            child: Text('WarmiBot © 2026 · Ecuador',
                 style: Theme.of(context)
                     .textTheme
                     .labelSmall
                     ?.copyWith(color: AppColors.textMuted)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _showAboutWarmiBot(BuildContext context) {
+    return showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        icon: Center(
+          child: ClipOval(
+            child: Image.asset(
+              'assets/images/warmibot_fondo.png',
+              width: 72,
+              height: 72,
+              fit: BoxFit.cover,
+              alignment: const Alignment(0, -0.42),
+              semanticLabel: 'Retrato ilustrado de WarmiBot',
+            ),
+          ),
+        ),
+        title: const Text('Acerca de WarmiBot'),
+        content: const Text(
+          'WarmiBot es una aplicación desarrollada por estudiantes de la '
+          'Universidad Estatal Amazónica. Combina inteligencia, accesibilidad '
+          'y servicios digitales en una experiencia inspirada en la Amazonía '
+          'ecuatoriana.',
+        ),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Entendido'),
           ),
         ],
       ),
@@ -368,8 +397,8 @@ class _ProfilePageState extends State<ProfilePage> {
                 fontWeight: FontWeight.w600)),
       );
 
-  Widget _tile(
-      IconData icon, String title, String subtitle, BuildContext context) {
+  Widget _tile(IconData icon, String title, String subtitle,
+      BuildContext context, [VoidCallback? onTap]) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Material(
@@ -394,7 +423,7 @@ class _ProfilePageState extends State<ProfilePage> {
               style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
           trailing: const Icon(Icons.chevron_right_rounded,
               color: AppColors.textMuted, size: 20),
-          onTap: () {},
+          onTap: onTap,
         ),
       ),
     );

@@ -162,29 +162,14 @@ class _WarmiAvatarState extends State<WarmiAvatar>
     );
   }
 
-  // Imagen o emoji del avatar según estado
+  // Retrato amazónico compartido por los distintos estados del asistente.
   Widget _avatarContent() {
-    // Si tienes un asset de imagen, usa:
-    // return Image.asset('assets/images/warmi_avatar.png', fit: BoxFit.cover);
-    // Por ahora mostramos la inicial estilizada:
-    return Container(
-      color: Colors.transparent,
-      child: Center(
-        child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-          Text('🌿', style: TextStyle(fontSize: widget.size * 0.28)),
-          Text(
-            'W',
-            style: TextStyle(
-              fontSize: widget.size * 0.22,
-              fontWeight: FontWeight.w900,
-              color: Colors.white,
-              shadows: const [
-                Shadow(color: AppColors.accentGreen, blurRadius: 12),
-              ],
-            ),
-          ),
-        ]),
-      ),
+    return Image.asset(
+      'assets/images/warmibot_fondo.png',
+      fit: BoxFit.cover,
+      alignment: const Alignment(0, -0.42),
+      semanticLabel: 'Retrato ilustrado de WarmiBot, asistente amazónica',
+      filterQuality: FilterQuality.high,
     );
   }
 
